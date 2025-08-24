@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Management - Hamilton Transport Management{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2 mb-3">
+                        <i class="fas fa-users me-2"></i>Staff Management
+                    </h1>
+
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                        <i class="fas fa-plus me-2"></i>Add Staff
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    {% if staff %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for staff_id, staff_member in staff.items() %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ staff_member.name }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if staff_member.username %}
+                                            <span class="text-primary">{{ staff_member.username }}</span>
+                                        {% else %}
+                                            <span class="text-muted">No account</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if staff_member.has_account is defined and staff_member.has_account %}
+                                            {% if staff_member.account_type == 'admin' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-crown me-1"></i>Admin
+                                                </span>
+                                            {% elif staff_member.account_type == 'class' %}
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-chalkboard-teacher me-1"></i>Class
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-user-slash me-1"></i>No Account
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-secondary" 
+                                                data-staff-id="{{ staff_id }}"
+                                                data-name="{{ staff_member.name }}"
+                                                data-email=""
+                                                data-account-type="{{ staff_member.account_type if staff_member.account_type is defined else '' }}"
+                                                data-username="{{ staff_member.username if staff_member.username is defined else '' }}"
+                                                data-class-assignments='{{ (staff_member.class_assignments or []) | tojson | safe }}'
+                                                onclick="editStaff(this)">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStaff('{{ staff_id }}', '{{ staff_member.name }}')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No staff members added yet</h5>
+
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                            <i class="fas fa-plus me-2"></i>Add First Staff Member
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Staff Modal -->
+<div class="modal fade" id="addStaffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_staff') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Staff Member</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="Optional - not used for login">
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                        <div class="form-text">Username for login access</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password', 'passwordToggleIcon')">
+                                <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Minimum 6 characters</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="account_type" class="form-label">Account Type</label>
+                        <select class="form-select" id="account_type" name="account_type" required onchange="toggleClassSelection('account_type', 'class_selection')">
+                            <option value="">Select account type...</option>
+                            <option value="admin">Admin (Full access)</option>
+                            <option value="class">Class Account (Limited access)</option>
+                        </select>
+                        <div class="form-text">Admin accounts have full system access. Class accounts are limited to viewing check-in.</div>
+                    </div>
+                    
+                    <div class="mb-3" id="class_selection" style="display: none;">
+                        <label class="form-label">Assign to Classes</label>
+                        <div class="form-text mb-2">Select which classes this account can view check-ins for:</div>
+                        {% if class_names %}
+                            {% for class_name in class_names %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="class_assignments" value="{{ class_name }}" id="class_{{ loop.index }}">
+                                    <label class="form-check-label" for="class_{{ loop.index }}">
+                                        Class {{ class_name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-muted">No classes available. Add students first to create classes.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Staff</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Staff Modal -->
+<div class="modal fade" id="editStaffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editStaffForm" action="" onsubmit="console.log('Form submitting to:', this.action); logFormData(this); return true;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Staff Member</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Display Name</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="edit_email" name="email" placeholder="Optional - not used for login">
+                    </div>
+                    
+                    <!-- Username and Password Section -->
+                    <div class="mb-3">
+                        <label for="edit_username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="edit_username" name="username">
+                        <div class="form-text">Username for login access</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_password" class="form-label">New Password</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="edit_password" name="password" minlength="6">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('edit_password', 'editPasswordToggleIcon')">
+                                <i class="fas fa-eye" id="editPasswordToggleIcon"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Leave blank to keep current password. Minimum 6 characters if changing.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_account_type" class="form-label">Account Type</label>
+                        <select class="form-select" id="edit_account_type" name="account_type" required onchange="toggleClassSelection('edit_account_type', 'edit_class_selection')">
+                            <option value="">Select account type...</option>
+                            <option value="admin">Admin (Full access)</option>
+                            <option value="class">Class Account (Limited access)</option>
+                        </select>
+                        <div class="form-text">Admin accounts have full system access. Class accounts are limited to viewing check-in.</div>
+                    </div>
+                    
+                    <div class="mb-3" id="edit_class_selection" style="display: none;">
+                        <label class="form-label">Assign to Classes</label>
+                        <div class="form-text mb-2">Select which classes this account can view check-ins for:</div>
+                        {% if class_names %}
+                            {% for class_name in class_names %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="class_assignments" value="{{ class_name }}" id="edit_class_{{ loop.index }}">
+                                    <label class="form-check-label" for="edit_class_{{ loop.index }}">
+                                        Class {{ class_name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-muted">No classes available. Add students first to create classes.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Staff</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Staff Modal -->
+<div class="modal fade" id="deleteStaffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deleteStaffForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Staff Member</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong id="deleteStaffName"></strong>?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Staff</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Account Modal -->
+<div class="modal fade" id="createAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="createAccountForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Staff Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>Account Creation</h6>
+                        <p class="mb-0">This will create a login account for <strong id="createAccountStaffName"></strong> to access the system.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="create_account_type" class="form-label">Account Type</label>
+                        <select class="form-select" id="create_account_type" name="account_type" required onchange="toggleClassSelection('create_account_type', 'create_class_selection')">
+                            <option value="">Select account type...</option>
+                            <option value="admin">Admin (Full system access)</option>
+                            <option value="class">Class Account (Check-in access only)</option>
+                        </select>
+                        <div class="form-text">
+                            <strong>Admin:</strong> Full access to all features including route administration and staff management<br>
+                            <strong>Class Account:</strong> Limited to viewing transport check-in
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="create_class_selection" style="display: none;">
+                        <label class="form-label">Assign to Classes</label>
+                        <div class="form-text mb-2">Select which classes this account can view check-ins for:</div>
+                        {% if class_names %}
+                            {% for class_name in class_names %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="class_assignments" value="{{ class_name }}" id="create_class_{{ loop.index }}">
+                                    <label class="form-check-label" for="create_class_{{ loop.index }}">
+                                        Class {{ class_name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-muted">No classes available. Add students first to create classes.</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="createAccountEmail" name="email" readonly>
+                        <div class="form-text">This email will be used for account login</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Manage Account Modal -->
+<div class="modal fade" id="manageAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="manageAccountForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manage Staff Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-user-cog me-2"></i>Account Management</h6>
+                        <p class="mb-0">Managing account for <strong id="manageAccountStaffName"></strong></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="manage_account_type" class="form-label">Account Type</label>
+                        <select class="form-select" id="manage_account_type" name="account_type" required>
+                            <option value="admin">Admin (Full system access)</option>
+                            <option value="class">Class Account (Check-in access only)</option>
+                        </select>
+                        <div class="form-text">Change the access level for this account</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="manageAccountEmail" name="email" readonly>
+                        <div class="form-text">Account login email</div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-outline-danger" onclick="deactivateAccount()">
+                                <i class="fas fa-user-times me-2"></i>Deactivate Account
+                            </button>
+                        </div>
+                        <div class="form-text text-danger">This will disable login access but keep the staff member record</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Removed separate password and username change modals - functionality moved to edit modal -->
+
+<script>
+
+
+function editStaff(button) {
+    const staffId = button.getAttribute('data-staff-id');
+    const name = button.getAttribute('data-name');
+    const email = button.getAttribute('data-email');
+    const accountType = button.getAttribute('data-account-type');
+    const username = button.getAttribute('data-username');
+    const classAssignmentsAttr = button.getAttribute('data-class-assignments');
+    console.log('Raw class assignments attribute:', classAssignmentsAttr);
+    let classAssignments = [];
+    try {
+        if (classAssignmentsAttr && classAssignmentsAttr !== '[') {
+            classAssignments = JSON.parse(classAssignmentsAttr);
+        }
+    } catch (e) {
+        console.error('Error parsing class assignments:', e);
+        classAssignments = [];
+    }
+    
+    // Set the form action and method properly
+    const form = document.getElementById('editStaffForm');
+    form.action = `/staff/${staffId}/edit`;
+    form.method = 'POST';
+    document.getElementById('edit_name').value = name || ''; // Display name is separate from username
+    document.getElementById('edit_email').value = email || '';
+    document.getElementById('edit_account_type').value = accountType || '';
+    document.getElementById('edit_username').value = username || '';
+    document.getElementById('edit_password').value = ''; // Always clear password field
+    
+    // Show/hide class selection based on account type
+    toggleClassSelection('edit_account_type', 'edit_class_selection');
+    
+    // Clear all class assignment checkboxes first
+    const classCheckboxes = document.querySelectorAll('#edit_class_selection input[type="checkbox"]');
+    classCheckboxes.forEach(checkbox => checkbox.checked = false);
+    
+    // Set the current class assignments if account type is 'class'
+    if (accountType === 'class' && classAssignments && classAssignments.length > 0) {
+        classAssignments.forEach(className => {
+            const checkbox = document.querySelector(`#edit_class_selection input[value="${className}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+    }
+    
+    new bootstrap.Modal(document.getElementById('editStaffModal')).show();
+}
+
+function logFormData(form) {
+    const formData = new FormData(form);
+    console.log('Form fields and values:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    // Use direct update route that bypasses the problematic edit route
+    console.log('Using direct update route...');
+    
+    // Add staff_id to form data
+    formData.append('staff_id', form.action.split('/staff/')[1].split('/edit')[0]);
+    
+    // Use the normal edit route instead of the removed update route
+    return true; // Allow normal form submission
+}
+
+function createAccount(staffId, name, email) {
+    document.getElementById('createAccountForm').action = `/staff/${staffId}/create_account`;
+    document.getElementById('createAccountStaffName').textContent = name;
+    document.getElementById('createAccountEmail').value = email;
+    new bootstrap.Modal(document.getElementById('createAccountModal')).show();
+}
+
+function manageAccount(staffId, name, accountType, email) {
+    document.getElementById('manageAccountForm').action = `/staff/${staffId}/manage_account`;
+    document.getElementById('manageAccountStaffName').textContent = name;
+    document.getElementById('manage_account_type').value = accountType;
+    document.getElementById('manageAccountEmail').value = email;
+    
+    // Store staff ID for deactivation
+    document.getElementById('manageAccountForm').setAttribute('data-staff-id', staffId);
+    
+    new bootstrap.Modal(document.getElementById('manageAccountModal')).show();
+}
+
+function deactivateAccount() {
+    const staffId = document.getElementById('manageAccountForm').getAttribute('data-staff-id');
+    if (confirm('Are you sure you want to deactivate this account? The staff member will no longer be able to log in.')) {
+        // Create a form to submit the deactivation
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/staff/${staffId}/deactivate_account`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteStaff(staffId, name) {
+    document.getElementById('deleteStaffForm').action = `/staff/${staffId}/delete`;
+    document.getElementById('deleteStaffName').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteStaffModal')).show();
+}
+
+function toggleClassSelection(selectId, classSelectionId) {
+    const selectElement = document.getElementById(selectId);
+    const classSelectionDiv = document.getElementById(classSelectionId);
+    
+    if (selectElement.value === 'class') {
+        classSelectionDiv.style.display = 'block';
+    } else {
+        classSelectionDiv.style.display = 'none';
+        // Uncheck all class checkboxes when hiding
+        const checkboxes = classSelectionDiv.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(checkbox => checkbox.checked = false);
+    }
+}
+
+// Removed changeUsername and changePassword functions - functionality moved to edit modal
+
+function togglePasswordVisibility(inputId, iconId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(iconId);
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+</script>
+{% endblock %}

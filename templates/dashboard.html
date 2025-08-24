@@ -1,0 +1,923 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_class_account %}Hamilton TMS{% else %}Dashboard - Hamilton TMS{% endif %}{% endblock %}
+
+{% block content %}
+
+{% if is_class_account %}
+<!-- Audio element for route ready notifications (class accounts only) -->
+<audio id="routeReadySound" preload="auto">
+    <!-- Pleasant notification chime as base64 encoded WAV -->
+    <source src="data:audio/wav;base64,UklGRr4CAABXQVZFZm10IBAAAAABAAEAESsAABErAAABAAgAZGF0YZoCAAD//f7/9Pv+/7D1/v8c6/7/nOD+/x/X/v+s0P7/ms///w7i/v9a9f7/pP3+/7f+/v9x/f7/Af3+/w39/v+b/f7/Mf7+/7L+/v8m/v7/fP3+/7/8/v/y+/7/8vr+/6T5/v9K+P7/2fb+/zH1/v9h8/7/fPH+/3fv/v9e7f7/N+v+/wbp/v/Q5v7/j+T+/0ni/v/g3/7/bt3+/+/a/v9g2P7/xNX+/x7T/v9r0P7/rM3+/+fK/v8fyP7/UsX+/37C/v+nv/7/w7z+/9m5/v/ltv7/6bP+/+Sw/v/Xrf7/w6r+/6in/v+FpP7/XqH+/zKe/v8Em/7/z5f+/5mU/v9hkf7/JY7+/+aK/v+mh/7/YYT+/xiB/v/Kff7/eHr+/yF3/v/Fc/7/ZXD+/wBt/v+WaP7/J2T+/7Ne/v86Wv7/vlT+/z9Q/v+9S/7/N0f+/6xC/v8dPv7/ijn+/+80/v9QMP7/qyv+/wMn/v9WIv7/ph3+/vQY/v5AGf7+ih/+/tMm/v4aL/7+WTf+/pU//v7NR/7+/k/+/ipY/v5SYP7+dWj+/pNw/v6teP7+wmD+/s+I/v7Xj/7+2pb+/tef/v7cpv7+2q3+/tK0/v7Eu/7+sML+/paJ/v51kP7+T5f+/iWe/v72pP7+w6v+/oyy/v5Quf7+D8D+/srG/v6Azf7+MdT+/t3a/v6F4f7+KOj+/sfu/v5h9f7+9/v+/oke/v8dJf7/bzz+/9xT/v5Sa/7+0GL+/lNY/v7XTf7+VkL+/s82/v5ELP7+tSH+/iUX/v6TC/7+/v/9/mj0/f7Q6P3+Nt39/pnR/f79xf3+X7r9/r6u/f4bg/3+NLf9/oWr/f7Wnf3+Jo/9/nSA/f7Aff3+C3r9/lN2/f6Ycf3+2mz9/hdo/f5RY/3+g139/rJX/f7eUf3+B0z9/ixG/f5OQP3+bjr9/oo0/f6kLv3+uyj9/c4i/f3eHP3+7Bb9/fYQ/f3+Cv3+Agf9/gID/f4BAP3+AP/8/v7+/P7+/vz+/v78/v7+/P7+/vz+/v78/v7+/P7+/vz+/v38/v79+/7+/fv+/v37/v799f7+/fX+/v31/v799f7+/fX+/v31/v799f7+/fX+/v31/v799f7+/fX+/v31/v799f7+/fX+/v31/v799f7+/fX+/v31/v799f7+/fX+/v31/v799f7+/fX+/v31/v79" type="audio/wav">
+</audio>
+
+
+
+<script>
+// Global audio initialization tracking
+window.audioInitialized = false;
+window.mobileAudioReady = false;
+
+// Initialize audio context when needed for notifications
+function initializeAudioContextForNotifications() {
+    console.log('🔊 initializeAudioContextForNotifications called');
+    try {
+        if (!window.audioContext) {
+            console.log('🔊 Creating new audio context');
+            window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        console.log('🔊 Audio context state:', window.audioContext.state);
+        
+        if (window.audioContext.state === 'suspended') {
+            console.log('🔊 Audio context suspended, attempting to resume');
+            // Try to resume, but don't block the notification if it fails
+            window.audioContext.resume().then(() => {
+                console.log('🔊 Audio context resumed successfully');
+                window.audioInitialized = true;
+                window.mobileAudioReady = true;
+            }).catch(error => {
+                console.log('🔊 Audio context resume failed:', error);
+            });
+        } else if (window.audioContext.state === 'running') {
+            console.log('🔊 Audio context is running');
+            window.audioInitialized = true;
+            window.mobileAudioReady = true;
+        }
+    } catch (error) {
+        console.log('🔊 Audio context creation failed:', error);
+    }
+}
+
+// Mobile-specific audio initialization with multiple trigger events
+function initializeMobileAudio() {
+    console.log('🔊 Mobile audio initialization triggered');
+    
+    if (window.mobileAudioReady) {
+        console.log('🔊 Mobile audio already ready');
+        return;
+    }
+    
+    initializeAudioContextForNotifications();
+    
+    // Force audio context to resume and play a silent sound for mobile compatibility
+    if (window.audioContext && window.audioContext.state === 'suspended') {
+        window.audioContext.resume().then(() => {
+            console.log('🔊 Mobile audio context resumed');
+            // Create and play a silent audio buffer to "unlock" audio on mobile
+            const buffer = window.audioContext.createBuffer(1, 1, 22050);
+            const source = window.audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(window.audioContext.destination);
+            source.start();
+            console.log('🔊 Silent audio played to unlock mobile audio');
+            window.mobileAudioReady = true;
+        }).catch(error => {
+            console.log('🔊 Mobile audio resume failed:', error);
+        });
+    }
+}
+
+// Multiple event listeners for robust mobile audio initialization
+document.addEventListener('click', initializeMobileAudio, { once: true });
+document.addEventListener('touchstart', initializeMobileAudio, { once: true });
+document.addEventListener('touchend', initializeMobileAudio, { once: true });
+
+// Also initialize on first button interaction (critical for mobile)
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners to all interactive elements
+    setTimeout(() => {
+        const buttons = document.querySelectorAll('button, .btn, .status-button');
+        buttons.forEach(button => {
+            button.addEventListener('click', initializeMobileAudio, { once: true });
+            button.addEventListener('touchstart', initializeMobileAudio, { once: true });
+        });
+        console.log('🔊 Added mobile audio listeners to', buttons.length, 'buttons');
+    }, 100);
+});
+
+
+</script>
+
+
+{% endif %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            {% if not is_class_account %}
+            <h1 class="h2 mb-3">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </h1>
+            {% endif %}
+        </div>
+    </div>
+
+
+
+
+
+    {% if not is_class_account %}
+    <!-- Route Statistics - Only for Admin Accounts -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card bg-danger text-white h-100 dashboard-route-card" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#notArrivedModal">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Routes Not Ready</h5>
+                        <h2 class="mb-0">{{ not_arrived_routes|default(0) }}</h2>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-times fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card bg-warning text-white h-100 dashboard-route-card" style="cursor: pointer; color: #000;" data-bs-toggle="modal" data-bs-target="#arrivedModal">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Routes Arrived</h5>
+                        <h2 class="mb-0">{{ arrived_routes|default(0) }}</h2>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-truck fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card bg-success text-white h-100 dashboard-route-card" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#readyModal">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">Routes Ready</h5>
+                        <h2 class="mb-0">{{ ready_routes|default(0) }}</h2>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Class Check-in Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i>Class Check-in Status
+                            </h5>
+                        </div>
+                        <div class="text-end">
+                            <label for="classFilter" class="form-label mb-1 d-block">Select Class:</label>
+                            <select class="form-select class-filter-mobile" id="classFilter">
+                                <option value="">Choose a class...</option>
+                                {% for class_name in class_names %}
+                                <option value="{{ class_name }}" {% if selected_class == class_name %}selected{% endif %}>Class {{ class_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="classCheckinLoading" class="text-center py-4" style="display: none;">
+                        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+                        <p class="text-muted">Loading class check-in data...</p>
+                    </div>
+                    
+                    <div id="classCheckinEmpty" class="text-center py-5">
+                        <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No Class Selected</h5>
+                        <p class="text-muted">Please select a class from the dropdown above to view check-in status for students</p>
+                    </div>
+                    
+                    <div id="classCheckinContent" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <span id="selectedClassName">Class</span> - 
+                                <span id="totalStudentsCount">0</span> students
+                            </h6>
+                            <div class="d-flex gap-3">
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check me-1"></i>
+                                    Ready: <span id="readyCount">0</span>
+                                </span>
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Not Ready: <span id="notReadyCount">0</span>
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="mobile-transport-col mobile-transport-header">Transport<br>Route</th>
+                                        <th class="mobile-area-col mobile-transport-header">Area</th>
+                                        <th class="mobile-students-col mobile-transport-header">Students</th>
+                                        <th class="mobile-status-col mobile-transport-header">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="classStudentsTable">
+                                    <!-- Dynamic content will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% if not is_class_account %}
+<!-- Route Status Modals - Only for Admin Accounts -->
+<!-- Not Arrived Routes Modal -->
+<div class="modal fade" id="notArrivedModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Routes Not Ready ({{ not_arrived_routes|default(0) }})</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if not_arrived_routes_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Route</th>
+                                    <th style="width: 50%;">Area</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route in not_arrived_routes_list %}
+                                <tr>
+                                    <td style="width: 50%;"><strong>{{ route.route_number }}</strong></td>
+                                    <td style="width: 50%;">{{ route.area_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5>All routes are ready!</h5>
+                        <p class="text-muted">No routes are currently marked as not ready.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('routes') }}" class="btn btn-success">Go to Check-in</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Arrived Routes Modal -->
+<div class="modal fade" id="arrivedModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Routes Arrived ({{ arrived_routes|default(0) }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if arrived_routes_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Route</th>
+                                    <th style="width: 50%;">Area</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route in arrived_routes_list %}
+                                <tr>
+                                    <td style="width: 50%;"><strong>{{ route.route_number }}</strong></td>
+                                    <td style="width: 50%;">{{ route.area_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                        <h5>No routes have arrived yet</h5>
+                        <p class="text-muted">Routes will appear here once they arrive at school.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('routes') }}" class="btn btn-success">Go to Check-in</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ready Routes Modal -->
+<div class="modal fade" id="readyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Routes Ready ({{ ready_routes|default(0) }})</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if ready_routes_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Route</th>
+                                    <th style="width: 50%;">Area</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route in ready_routes_list %}
+                                <tr>
+                                    <td style="width: 50%;"><strong>{{ route.route_number }}</strong></td>
+                                    <td style="width: 50%;">{{ route.area_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-hourglass-start fa-3x text-info mb-3"></i>
+                        <h5>No routes are ready yet</h5>
+                        <p class="text-muted">Routes will appear here once they're ready for loading/unloading.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('routes') }}" class="btn btn-success">Go to Check-in</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Class Check-in functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const classFilter = document.getElementById('classFilter');
+    const loadingDiv = document.getElementById('classCheckinLoading');
+    const emptyDiv = document.getElementById('classCheckinEmpty');
+    const contentDiv = document.getElementById('classCheckinContent');
+    const studentsTable = document.getElementById('classStudentsTable');
+    let currentClass = null;
+    let refreshInterval = null;
+    
+    classFilter.addEventListener('change', function() {
+        const selectedClass = this.value;
+        currentClass = selectedClass;
+        
+        // Clear any existing refresh interval
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+        
+        if (!selectedClass) {
+            // Show empty state
+            loadingDiv.style.display = 'none';
+            contentDiv.style.display = 'none';
+            emptyDiv.style.display = 'block';
+            // Update dashboard stats to show all data when no class selected
+            updateDashboardStats();
+            return;
+        }
+        
+        // Start automatic refresh for the selected class
+        startAutoRefresh(selectedClass);
+        
+        // Update dashboard stats with the new class selection
+        updateDashboardStats();
+    });
+    
+    function startAutoRefresh(selectedClass) {
+        // Initial load
+        fetchClassData(selectedClass);
+        
+        // Set up automatic refresh every 2 seconds
+        refreshInterval = setInterval(() => {
+            if (currentClass === selectedClass) {
+                fetchClassData(selectedClass, false); // Silent refresh (no loading state)
+            }
+        }, 2000);
+    }
+    
+    function fetchClassData(selectedClass, showLoading = true) {
+        if (showLoading) {
+            // Show loading state
+            emptyDiv.style.display = 'none';
+            contentDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+        }
+        
+        // Fetch class check-in data
+        fetch(`/api/class-checkin/${encodeURIComponent(selectedClass)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayClassData(data);
+                } else {
+                    console.error('Error fetching class data:', data.error);
+                    if (showLoading) {
+                        showError('Failed to load class data');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Network error:', error);
+                if (showLoading) {
+                    showError('Network error - please try again');
+                }
+            })
+            .finally(() => {
+                if (showLoading) {
+                    loadingDiv.style.display = 'none';
+                }
+            });
+    }
+    
+    let previousReadyRoutes = new Set(); // Track routes that were ready in the last check
+    let isFirstLoad = true; // Track if this is the first data load
+    let currentSelectedClass = null; // Track current class to detect class changes
+    
+    function displayClassData(data) {
+        // Update header information
+        document.getElementById('selectedClassName').textContent = `Class ${data.class_name}`;
+        document.getElementById('totalStudentsCount').textContent = data.total_students;
+        
+        // Update counts from the new API structure
+        document.getElementById('readyCount').textContent = data.ready_students || 0;
+        document.getElementById('notReadyCount').textContent = data.not_ready_students || 0;
+        
+        // Track current ready routes for sound notifications
+        const currentReadyRoutes = new Set();
+        data.transport_groups.forEach(group => {
+            if (group.checkin_status === 'Ready') {
+                currentReadyRoutes.add(group.route_number);
+            }
+        });
+        
+        // Check if this is a class change
+        const isClassChange = currentSelectedClass !== null && currentSelectedClass !== data.class_name;
+        
+        // Only play sound for newly ready routes if:
+        // 1. Not first load
+        // 2. Not a class change (switching between classes)
+        // 3. Routes actually became ready since last check
+        if (!isFirstLoad && !isClassChange) {
+            const newlyReadyRoutes = [...currentReadyRoutes].filter(route => 
+                !previousReadyRoutes.has(route)
+            );
+            
+            if (newlyReadyRoutes.length > 0) {
+                console.log('🔊 Route(s) newly ready, playing notification sound for:', newlyReadyRoutes);
+                // Initialize audio context if needed before playing sound
+                initializeAudioContextForNotifications();
+                playRouteReadySound();
+            }
+        } else if (isFirstLoad) {
+            console.log('🔇 First load detected, skipping sound notification');
+        } else if (isClassChange) {
+            console.log('🔇 Class change detected (from', currentSelectedClass, 'to', data.class_name, '), skipping sound notification');
+        }
+        
+        // Update tracking variables
+        previousReadyRoutes = currentReadyRoutes;
+        currentSelectedClass = data.class_name;
+        isFirstLoad = false;
+        
+        // Build table rows grouped by transport
+        studentsTable.innerHTML = '';
+        
+        if (data.transport_groups.length === 0) {
+            studentsTable.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-4">
+                        <i class="fas fa-user-slash text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No students found in this class</p>
+                    </td>
+                </tr>
+            `;
+        } else {
+            data.transport_groups.forEach(group => {
+                const statusBadge = group.checkin_status === 'Ready' 
+                    ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Ready</span>'
+                    : '<span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Not Ready</span>';
+                
+                // Create student names list (first names only)
+                const studentNames = group.students.map(student => {
+                    const fullName = student.name;
+                    const firstName = fullName.split(' ')[0]; // Get first name only
+                    return escapeHtml(firstName);
+                }).join(', ');
+                const studentCount = group.students.length;
+                const studentsDisplay = studentCount === 1 
+                    ? `<strong>${studentNames}</strong>`
+                    : `<strong>${studentCount} students:</strong><br><small class="text-muted">${studentNames}</small>`;
+                
+                // Format transport route for mobile (split parent names into two lines)
+                const formatTransportRoute = (routeNumber) => {
+                    if (routeNumber === 'No Route') {
+                        return '<span class="text-muted">No Route</span>';
+                    }
+                    
+                    // Check if it's a parent route (ends with "'s Parent")
+                    if (routeNumber && routeNumber.includes("'s Parent")) {
+                        const childName = routeNumber.replace("'s Parent", "").trim();
+                        // Only use mobile wrap for parent routes to enable line breaks
+                        return `<span class="badge bg-primary mobile-route-wrap">${escapeHtml(childName)}<br>Parent</span>`;
+                    }
+                    
+                    // For regular routes, just display the route number in a standard badge
+                    return `<span class="badge bg-primary">${escapeHtml(routeNumber)}</span>`;
+                };
+
+                const row = `
+                    <tr class="${group.checkin_status === 'Ready' ? 'table-success' : 'table-warning'}">
+                        <td class="mobile-transport-col">
+                            ${formatTransportRoute(group.route_number)}
+                        </td>
+                        <td class="mobile-area-col">${escapeHtml(group.area)}</td>
+                        <td class="mobile-students-col">${studentsDisplay}</td>
+                        <td class="mobile-status-col">${statusBadge}</td>
+                    </tr>
+                `;
+                studentsTable.innerHTML += row;
+            });
+        }
+        
+        // Show content
+        contentDiv.style.display = 'block';
+    }
+    
+    function showError(message) {
+        studentsTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle text-warning mb-2"></i>
+                    <p class="text-warning mb-0">${escapeHtml(message)}</p>
+                </td>
+            </tr>
+        `;
+        contentDiv.style.display = 'block';
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+
+    
+    // Clean up interval when page unloads
+    window.addEventListener('beforeunload', function() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+        if (dashboardStatsInterval) {
+            clearInterval(dashboardStatsInterval);
+        }
+    });
+    
+    // Dashboard Statistics Real-time Update
+    let dashboardStatsInterval = null;
+    
+    function startDashboardStatsPolling() {
+        // Initial update
+        updateDashboardStats();
+        
+        // Poll every 3 seconds for dashboard stats
+        dashboardStatsInterval = setInterval(() => {
+            updateDashboardStats();
+        }, 3000);
+    }
+    
+    function updateDashboardStats() {
+        // Get selected class from dropdown (try both IDs)
+        const classSelector = document.getElementById('classSelector') || document.getElementById('classFilter');
+        const selectedClass = classSelector ? classSelector.value : '';
+        
+        console.log('Dashboard stats update - selected class:', selectedClass);
+        
+        // Build URL with class parameter
+        let url = '/api/dashboard-stats';
+        if (selectedClass) {
+            url += '?class=' + encodeURIComponent(selectedClass);
+        }
+        
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Update route status tiles
+            updateStatsTile('Routes Not Ready', data.not_ready_buses || 0);
+            updateStatsTile('Routes Arrived', data.arrived_buses || 0);  
+            updateStatsTile('Routes Ready', data.ready_buses || 0);
+            
+
+        })
+        .catch(error => {
+            console.log('Dashboard stats update error:', error);
+        });
+    }
+    
+    function updateStatsTile(title, count) {
+        // Find the card with the matching title and update its count
+        const cards = document.querySelectorAll('.dashboard-route-card');
+        cards.forEach(card => {
+            const titleElement = card.querySelector('.card-title');
+            if (titleElement && titleElement.textContent.trim() === title) {
+                const countElement = card.querySelector('h2');
+                if (countElement) {
+                    countElement.textContent = count;
+                }
+            }
+        });
+    }
+    
+    // Start dashboard stats polling when page loads
+    {% if not is_class_account %}
+    startDashboardStatsPolling();
+    {% endif %}
+    
+    {% if is_class_account and selected_class %}
+    // Auto-load the pre-selected class for class accounts
+    setTimeout(() => {
+        const classFilter = document.getElementById('classFilter');
+        if (classFilter && classFilter.value === '{{ selected_class }}') {
+            // Trigger the change event to load the class data automatically
+            classFilter.dispatchEvent(new Event('change'));
+        }
+    }, 100);
+    {% endif %}
+    
+    {% if not is_class_account %}
+    // Modal refresh functionality - Only for Admin Accounts
+    // Listen for modal show events to refresh data
+    document.getElementById('notArrivedModal').addEventListener('show.bs.modal', function() {
+        refreshModalData('not_ready');
+    });
+    
+    document.getElementById('arrivedModal').addEventListener('show.bs.modal', function() {
+        refreshModalData('arrived');
+    });
+    
+    document.getElementById('readyModal').addEventListener('show.bs.modal', function() {
+        refreshModalData('ready');
+    });
+    {% endif %}
+
+});
+
+function refreshModalData(status) {
+    // Determine which class to filter by (if class account)
+    const classFilter = document.getElementById('classFilter');
+    const selectedClass = classFilter ? classFilter.value : '';
+    
+    // Build URL with class filter if applicable
+    let url = `/api/routes-by-status/${status}`;
+    if (selectedClass) {
+        url += `?class=${encodeURIComponent(selectedClass)}`;
+    }
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateModalContent(status, data.routes);
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing modal data:', error);
+        });
+}
+
+function updateModalContent(status, routes) {
+    let modalId;
+    
+    if (status === 'not_ready') {
+        modalId = 'notArrivedModal';
+    } else if (status === 'arrived') {
+        modalId = 'arrivedModal';
+    } else if (status === 'ready') {
+        modalId = 'readyModal';
+    }
+    
+    const modal = document.getElementById(modalId);
+    const tableBody = modal.querySelector('tbody');
+    
+    if (routes.length === 0) {
+        // Show empty state
+        const emptyDiv = modal.querySelector('.text-center.py-4');
+        if (emptyDiv) {
+            emptyDiv.style.display = 'block';
+        }
+        const tableDiv = modal.querySelector('.table-responsive');
+        if (tableDiv) {
+            tableDiv.style.display = 'none';
+        }
+    } else {
+        // Show table with data
+        const emptyDiv = modal.querySelector('.text-center.py-4');
+        if (emptyDiv) {
+            emptyDiv.style.display = 'none';
+        }
+        const tableDiv = modal.querySelector('.table-responsive');
+        if (tableDiv) {
+            tableDiv.style.display = 'block';
+        }
+        
+        // Update table content
+        tableBody.innerHTML = '';
+        routes.forEach(route => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="width: 50%;"><strong>${route.route_number}</strong></td>
+                <td style="width: 50%;">${route.area_name}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+    
+    // Update modal title count
+    const titleElement = modal.querySelector('.modal-title');
+    if (titleElement) {
+        const titleText = titleElement.textContent.replace(/\(\d+\)/, `(${routes.length})`);
+        titleElement.textContent = titleText;
+    }
+}
+
+function playRouteReadySound() {
+    {% if is_class_account %}
+    console.log('🔊 Attempting to play route ready sound for class account');
+    
+    // Check if we're on mobile and audio isn't ready yet
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile && !window.mobileAudioReady) {
+        console.log('🔊 Mobile device detected but audio not ready, initializing...');
+        initializeMobileAudio();
+        // Try to play after a short delay to allow initialization
+        setTimeout(() => {
+            playRouteReadySound();
+        }, 100);
+        return;
+    }
+    
+    // Use existing audio context if available
+    let audioContext = window.audioContext;
+    
+    // Try Web Audio API first
+    try {
+        if (!audioContext) {
+            console.log('🔊 Creating new audio context for sound playback');
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            window.audioContext = audioContext;
+        }
+        
+        console.log('🔊 Audio context state before playing:', audioContext.state);
+        
+        // Handle audio context suspended state (required for user interaction)
+        if (audioContext.state === 'suspended') {
+            console.log('🔊 Audio context suspended, attempting to resume');
+            audioContext.resume().then(() => {
+                console.log('🔊 Audio context resumed successfully');
+                playBeep(audioContext);
+            }).catch(e => {
+                console.log('🔊 Failed to resume audio context:', e);
+                tryFallbackAudio();
+            });
+        } else if (audioContext.state === 'running') {
+            console.log('🔊 Audio context ready, playing beep');
+            playBeep(audioContext);
+        } else {
+            console.log('🔊 Audio context in unexpected state:', audioContext.state);
+            tryFallbackAudio();
+        }
+        
+    } catch (error) {
+        console.log('🔊 Web Audio API error:', error);
+        tryFallbackAudio();
+    }
+    {% else %}
+    // No sound for admin accounts
+    console.log('🔇 Sound notification disabled for admin accounts');
+    {% endif %}
+}
+
+function playBeep(audioContext) {
+    try {
+        // Create a bell-like chime sound using multiple harmonics
+        playChimeSound(audioContext, 0.0);
+        
+        console.log('🔊 Gentle chime notification played successfully');
+    } catch (error) {
+        console.log('🔊 Error in playBeep:', error);
+        tryFallbackAudio();
+    }
+}
+
+function playChimeSound(audioContext, startTime) {
+    // Create a gentle, calming chime using soft harmonies
+    const duration = 1.0;
+    const now = audioContext.currentTime + startTime;
+    
+    // Use gentle, consonant frequencies for a calming effect
+    const chimeNotes = [
+        { freq: 261.63, volume: 0.12, delay: 0.0 },   // C4 (lower, warmer)
+        { freq: 329.63, volume: 0.10, delay: 0.1 },   // E4 (major third)
+        { freq: 392.00, volume: 0.08, delay: 0.15 }   // G4 (perfect fifth)
+    ];
+    
+    chimeNotes.forEach(note => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Use sine wave for soft, pure tone
+        oscillator.type = 'sine';
+        oscillator.frequency.value = note.freq;
+        
+        // Create gentle, calming envelope
+        const noteStart = now + note.delay;
+        gainNode.gain.setValueAtTime(0, noteStart);
+        gainNode.gain.linearRampToValueAtTime(note.volume, noteStart + 0.1); // Gentle attack
+        gainNode.gain.exponentialRampToValueAtTime(0.001, noteStart + duration); // Soft decay
+        
+        oscillator.start(noteStart);
+        oscillator.stop(noteStart + duration);
+    });
+}
+
+function tryFallbackAudio() {
+    console.log('🔊 Trying HTML5 audio fallback');
+    const audio = document.getElementById('routeReadySound');
+    if (audio) {
+        console.log('🔊 Found HTML5 audio element, attempting to play');
+        audio.currentTime = 0;
+        audio.volume = 0.7; // Set volume
+        audio.play()
+            .then(() => console.log('🔊 HTML5 audio played successfully'))
+            .catch(e => {
+                console.log('🔊 HTML5 audio play failed:', e);
+                // Try simple system beep as last resort
+                console.log('🔊 Trying system beep fallback');
+                try {
+                    // Create a simple pleasant chime using oscillator
+                    const oscillator = window.audioContext.createOscillator();
+                    const gainNode = window.audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(window.audioContext.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 261.63; // C4 note (gentle chime)
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    oscillator.stop(window.audioContext.currentTime + 0.4);
+                    console.log('🔊 System chime played');
+                } catch(err) {
+                    console.log('🔊 All audio methods failed:', err);
+                }
+            });
+    } else {
+        console.log('🔊 No HTML5 audio element found');
+    }
+}
+</script>
+
+<!-- Bottom spacing -->
+<div style="height: 60px;"></div>
+
+{% endblock %}

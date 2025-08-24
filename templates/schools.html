@@ -1,0 +1,812 @@
+{% extends "base.html" %}
+
+{% block title %}Route Admin - Hamilton TMS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2 mb-3">
+                        <i class="fas fa-cog me-2"></i>Route Admin
+                    </h1>
+
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('download_routes_csv_template') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-download me-2"></i>CSV Template
+                    </a>
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
+                        <i class="fas fa-upload me-2"></i>Bulk Upload
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRouteModal">
+                        <i class="fas fa-plus me-2"></i>Add Route
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Controls -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <form method="GET" action="{{ url_for('schools') }}" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" placeholder="Search routes by number, provider, or area..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                {% if search_query %}
+                <a href="{{ url_for('schools') }}" class="btn btn-outline-secondary ms-2">
+                    <i class="fas fa-times"></i>
+                </a>
+                {% endif %}
+            </form>
+        </div>
+        <div class="col-md-4">
+        </div>
+    </div>
+
+    <!-- Routes List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    {% if search_query %}
+                    <div class="alert alert-info m-3 mb-0">
+                        <i class="fas fa-search me-2"></i>
+                        Showing results for "<strong>{{ search_query }}</strong>" ({{ routes|length }} route{{ 's' if routes|length != 1 else '' }} found)
+                    </div>
+                    {% endif %}
+                    {% if routes %}
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                    <th style="width: 12%; padding: 12px 30px 12px 30px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6;">Route</th>
+                                    <th style="width: 28%; padding: 12px 30px 12px 30px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6;">Provider</th>
+                                    <th style="width: 20%; padding: 12px 30px 12px 30px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6;">Area</th>
+                                    <th style="width: 25%; padding: 12px 30px 12px 30px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6;">Students</th>
+                                    <th style="width: 15%; padding: 12px 30px 12px 30px; text-align: right; font-weight: 600; border-bottom: 2px solid #dee2e6;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route_id, route in routes.items() %}
+                                <tr style="border-bottom: 1px solid #dee2e6;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle;">
+                                        <strong>{{ route.route_number }}</strong>
+                                    </td>
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle;">
+                                        <div>
+                                            <strong>{{ route.provider_name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle;">
+                                        {% if route.area_name %}
+                                            {{ route.area_name }}
+                                        {% elif route.route_number == 'Parent' %}
+                                            <span class="text-muted">Multiple pickup areas</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle;">
+                                        <a href="{{ url_for('route_students', route_id=route_id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-users me-1"></i>{{ route.students_count }} students
+                                        </a>
+                                    </td>
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle; text-align: right;">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="editRoute('{{ route_id }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRoute('{{ route_id }}', '{{ route.route_number }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 m-3">
+                        <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No routes added yet</h5>
+                        <p class="text-muted">Start by adding your first route to the system</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRouteModal">
+                            <i class="fas fa-plus me-2"></i>Add First Route
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Areas Management Section -->
+<div class="container-fluid mt-5 mb-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="h3 mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>Areas
+                </h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAreaModal">
+                    <i class="fas fa-plus me-2"></i>Add Area
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    {% if areas %}
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                    <th style="width: 60%; padding: 12px 30px 12px 30px; text-align: left; font-weight: 600; border-bottom: 2px solid #dee2e6;">Area Name</th>
+                                    <th style="width: 40%; padding: 12px 30px 12px 30px; text-align: right; font-weight: 600; border-bottom: 2px solid #dee2e6;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for area_id, area in areas.items() %}
+                                {% if area.name != 'Multiple areas' %}
+                                <tr style="border-bottom: 1px solid #dee2e6;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle;">
+                                        {{ area.name }}
+                                    </td>
+                                    <td style="padding: 12px 30px 12px 30px; vertical-align: middle; text-align: right;">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="editArea('{{ area_id }}', '{{ area.name }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteArea('{{ area_id }}', '{{ area.name }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 m-3">
+                        <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No areas added yet</h5>
+                        <p class="text-muted">Start by adding your first area to organise pickup locations</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAreaModal">
+                            <i class="fas fa-plus me-2"></i>Add First Area
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Route Modal -->
+<div class="modal fade" id="addRouteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_route_admin') }}" id="addRouteForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="route_number" class="form-label">Route Name</label>
+                        <input type="text" class="form-control" id="route_number" name="route_number" placeholder="e.g., R001" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="provider_id" class="form-label">Provider</label>
+                        <div class="input-group">
+                            <select class="form-select" id="provider_id" name="provider_id" required>
+                                <option value="">Select a provider</option>
+                                {% for provider_id, provider in providers.items() %}
+                                <option value="{{ provider_id }}">{{ provider.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addProviderModal" title="Add New Provider">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="area_id" class="form-label">Area</label>
+                        <div class="input-group">
+                            <select class="form-select" id="area_id" name="area_id" required>
+                                <option value="">Select an area</option>
+                                {% for area_id, area in areas.items() %}
+                                {% if area.name != 'Multiple areas' %}
+                                <option value="{{ area_id }}">{{ area.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addAreaModal" title="Add New Area">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Route</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Route Modal -->
+<div class="modal fade" id="editRouteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editRouteForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_route_number" class="form-label">Route Number</label>
+                        <input type="text" class="form-control" id="edit_route_number" name="route_number" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_provider_id" class="form-label">Provider</label>
+                        <div class="input-group">
+                            <select class="form-select" id="edit_provider_id" name="provider_id" required>
+                                <option value="">Select a provider</option>
+                                {% for provider_id, provider in providers.items() %}
+                                <option value="{{ provider_id }}">{{ provider.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addProviderModal" title="Add New Provider">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_area_id" class="form-label">Area</label>
+                        <div class="input-group">
+                            <select class="form-select" id="edit_area_id" name="area_id" required>
+                                <option value="">Select an area</option>
+                                {% for area_id, area in areas.items() %}
+                                {% if area.name != 'Multiple areas' %}
+                                <option value="{{ area_id }}">{{ area.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addAreaModal" title="Add New Area">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Route</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Route Modal -->
+<div class="modal fade" id="deleteRouteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deleteRouteForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete route <strong id="deleteRouteName"></strong>?</p>
+                    <p class="text-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        This will also remove all students assigned to this route.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Route</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- CSV Upload Modal -->
+<div class="modal fade" id="csvUploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('bulk_upload_routes') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Upload Routes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">Choose CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                        <div class="form-text">
+                            Upload a CSV file with route information. Make sure to use the provided template format.
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle me-2"></i>CSV Format Requirements:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Route Number:</strong> Required - must be unique</li>
+                            <li><strong>Provider/Area/Students:</strong> Optional - can be added later</li>
+                            <li>Missing providers will be created as "To Be Assigned"</li>
+                            <li>Missing areas will use default area or create new ones</li>
+                            <li>You can upload partial information and complete details later</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('download_routes_csv_template') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-download me-2"></i>Download Template
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload Routes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Provider Modal -->
+<div class="modal fade" id="addProviderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_provider') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Provider</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="provider_name" class="form-label">Provider Name</label>
+                        <input type="text" class="form-control" id="provider_name" name="name" placeholder="e.g., Hamilton Transport Co." required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="contact_name" class="form-label">Contact Name</label>
+                        <input type="text" class="form-control" id="contact_name" name="contact_name" placeholder="e.g., John Smith" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="contact_phone" class="form-label">Contact Phone</label>
+                        <input type="tel" class="form-control" id="contact_phone" name="contact_phone" placeholder="e.g., 01234 567890" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="contact_email" class="form-label">Contact Email</label>
+                        <input type="email" class="form-control" id="contact_email" name="contact_email" placeholder="e.g., contact@hamiltontramp.co.uk">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Provider</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Area Modal -->
+<div class="modal fade" id="addAreaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_area_admin') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Area</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="area_name" class="form-label">Area Name</label>
+                        <input type="text" class="form-control" id="area_name" name="name" placeholder="e.g., Front of school" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Area</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Area Modal -->
+<div class="modal fade" id="deleteAreaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Area</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the area "<strong id="deleteAreaName"></strong>"?</p>
+                <p class="text-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This action cannot be undone. Any routes using this area will be unassigned.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteArea()">Delete Area</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Area Modal -->
+<div class="modal fade" id="editAreaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('edit_area_admin') }}" id="editAreaForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="area_id" id="edit_area_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Area</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_area_name" class="form-label">Area Name</label>
+                        <input type="text" class="form-control" id="edit_area_name" name="name" placeholder="e.g., Front of school" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Area</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+
+
+function editRoute(routeId) {
+    // Fetch route data and populate edit form
+    fetch(`/routes/${routeId}/edit-data`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('editRouteForm').action = `/routes/${routeId}/edit`;
+                document.getElementById('edit_route_number').value = data.route.route_number;
+                document.getElementById('edit_provider_id').value = data.route.provider_id;
+                document.getElementById('edit_area_id').value = data.route.area_id;
+                new bootstrap.Modal(document.getElementById('editRouteModal')).show();
+            } else {
+                alert('Error loading route data: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error loading route data. Please try again.');
+        });
+}
+
+function deleteRoute(routeId, routeNumber) {
+    document.getElementById('deleteRouteForm').action = `/routes/${routeId}/delete`;
+    document.getElementById('deleteRouteName').textContent = routeNumber;
+    new bootstrap.Modal(document.getElementById('deleteRouteModal')).show();
+}
+
+// Handle provider creation
+document.getElementById('addProviderModal').addEventListener('hidden.bs.modal', function () {
+    // Clear form when modal closes
+    this.querySelector('form').reset();
+});
+
+// Handle provider form submission
+document.querySelector('#addProviderModal form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    
+    // Disable submit button and show loading
+    submitButton.disabled = true;
+    submitButton.textContent = 'Adding...';
+    
+    fetch(this.action + '?ajax=1', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Add new provider to both dropdowns
+            const newOption = new Option(data.provider.name, data.provider.id);
+            const editOption = new Option(data.provider.name, data.provider.id);
+            
+            document.getElementById('provider_id').appendChild(newOption);
+            document.getElementById('edit_provider_id').appendChild(editOption);
+            
+            // Select the new provider in the add route form
+            document.getElementById('provider_id').value = data.provider.id;
+            
+            // Clear the form
+            this.reset();
+            
+            // Close the Add Provider modal
+            const addProviderModal = bootstrap.Modal.getInstance(document.getElementById('addProviderModal'));
+            addProviderModal.hide();
+            
+            // Show the Add Route modal again after a brief delay
+            setTimeout(() => {
+                const addRouteModal = new bootstrap.Modal(document.getElementById('addRouteModal'));
+                addRouteModal.show();
+            }, 300);
+        } else {
+            alert('Error adding provider: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding provider. Please try again.');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    });
+    
+    return false;
+});
+
+// Handle area creation
+document.getElementById('addAreaModal').addEventListener('hidden.bs.modal', function () {
+    // Clear form when modal closes
+    this.querySelector('form').reset();
+});
+
+// Handle area form submission
+document.querySelector('#addAreaModal form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    
+    // Disable submit button and show loading
+    submitButton.disabled = true;
+    submitButton.textContent = 'Adding...';
+    
+    fetch(this.action + '?ajax=1', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Add new area to both dropdowns
+            const newOption = new Option(data.area.name, data.area.id);
+            const editOption = new Option(data.area.name, data.area.id);
+            
+            document.getElementById('area_id').appendChild(newOption);
+            document.getElementById('edit_area_id').appendChild(editOption);
+            
+            // Select the new area in the add route form
+            document.getElementById('area_id').value = data.area.id;
+            
+            // Clear the form
+            this.reset();
+            
+            // Close the Add Area modal
+            const addAreaModal = bootstrap.Modal.getInstance(document.getElementById('addAreaModal'));
+            addAreaModal.hide();
+            
+            // Only show Add Route modal if we came from the route creation flow
+            // Check if the Add Route modal was previously open
+            const addRouteModal = document.getElementById('addRouteModal');
+            if (addRouteModal && addRouteModal.classList.contains('show')) {
+                // Show the Add Route modal again after a brief delay
+                setTimeout(() => {
+                    const modal = new bootstrap.Modal(addRouteModal);
+                    modal.show();
+                }, 300);
+            } else {
+                // Refresh the page to show the new area in the areas list
+                window.location.reload();
+            }
+        } else {
+            alert('Error adding area: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding area. Please try again.');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    });
+    
+    return false;
+});
+
+// Area management functions
+function editArea(areaId, areaName) {
+    document.getElementById('edit_area_id').value = areaId;
+    document.getElementById('edit_area_name').value = areaName;
+    new bootstrap.Modal(document.getElementById('editAreaModal')).show();
+}
+
+function deleteArea(areaId, areaName) {
+    // Store values for the modal
+    window.currentDeleteArea = { id: areaId, name: areaName };
+    
+    // Set the area name in the modal
+    document.getElementById('deleteAreaName').textContent = areaName;
+    
+    // Show the custom confirmation modal
+    new bootstrap.Modal(document.getElementById('deleteAreaModal')).show();
+}
+
+function confirmDeleteArea() {
+    const areaData = window.currentDeleteArea;
+    if (!areaData) return;
+    
+    // Hide the modal
+    bootstrap.Modal.getInstance(document.getElementById('deleteAreaModal')).hide();
+    
+    // Show loading state on the button
+    const buttons = document.querySelectorAll(`button[onclick="deleteArea('${areaData.id}', '${areaData.name}')"]`);
+    buttons.forEach(button => {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        button.disabled = true;
+    });
+    
+    // Direct AJAX call
+    const formData = new FormData();
+    formData.append('area_id', areaData.id);
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? 
+        document.querySelector('meta[name="csrf-token"]').getAttribute('content') :
+        document.querySelector('[name="csrf_token"]')?.value;
+    
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
+    
+    fetch('{{ url_for("delete_area_admin") }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Success - reload page to refresh
+            setTimeout(() => location.reload(), 500);
+        } else {
+            alert('Error deleting area: ' + data.message);
+            // Re-enable buttons
+            buttons.forEach(button => {
+                button.innerHTML = '<i class="fas fa-trash"></i>';
+                button.disabled = false;
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error deleting area. Please try again.');
+        // Re-enable buttons
+        buttons.forEach(button => {
+            button.innerHTML = '<i class="fas fa-trash"></i>';
+            button.disabled = false;
+        });
+    });
+}
+
+// Handle area edit form submission
+document.querySelector('#editAreaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    
+    // Disable submit button and show loading
+    submitButton.disabled = true;
+    submitButton.textContent = 'Updating...';
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reload the page to refresh the areas list
+            location.reload();
+        } else {
+            alert('Error updating area: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating area. Please try again.');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    });
+});
+
+
+
+// Mark user action timestamp when CSV upload form is submitted
+document.getElementById('csvUploadModal').addEventListener('submit', function(e) {
+    // Mark user action to prevent immediate refresh
+    localStorage.setItem('lastUserAction', Date.now().toString());
+});
+
+// Note: Form validation is now handled by HTML5 required attributes for better user experience
+</script>
+{% endblock %}

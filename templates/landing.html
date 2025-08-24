@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to Hamilton TMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+    <div class="row w-100">
+        <div class="col-md-6 mx-auto text-center">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-bus fa-4x text-primary mb-3"></i>
+                        <h1 class="display-4 mb-3">Hamilton TMS</h1>
+                        <p class="lead text-muted">School Transportation Management System</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5 class="mb-3">Comprehensive Fleet Management</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-school text-primary me-2"></i>
+                                    <span>Multiple Schools</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-route text-primary me-2"></i>
+                                    <span>Route Management</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-users text-primary me-2"></i>
+                                    <span>Staff Assignment</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user-graduate text-primary me-2"></i>
+                                    <span>Student Tracking</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-muted">
+                            Streamline your school transportation operations with our comprehensive management system. 
+                            Track buses, manage staff, and ensure student safety across multiple schools.
+                        </p>
+                    </div>
+                    
+                    <div class="d-grid gap-2 col-md-6 mx-auto">
+                        <a href="{{ url_for('replit_auth.login') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In to Continue
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

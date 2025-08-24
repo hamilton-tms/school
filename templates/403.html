@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Access Denied - Hamilton Transport Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+    <div class="row w-100">
+        <div class="col-md-6 mx-auto text-center">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle fa-4x text-warning mb-3"></i>
+                        <h1 class="display-4 mb-3">Access Denied</h1>
+                        <p class="lead text-muted">You don't have permission to access this resource</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <p class="text-muted">
+                            The page you're looking for is restricted or doesn't exist. 
+                            Please contact your administrator if you believe this is an error.
+                        </p>
+                    </div>
+                    
+                    <div class="d-grid gap-2 col-md-6 mx-auto">
+                        {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-tachometer-alt me-2"></i>Return to Dashboard
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i>Return to Home
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

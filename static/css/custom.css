@@ -1,0 +1,876 @@
+/* Custom styles for OmniComm - Light Theme */
+
+/* Body and layout */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.navbar-dark .navbar-brand {
+    color: #fff;
+}
+
+/* Cards */
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+    transition: box-shadow 0.3s ease;
+    background-color: #fff;
+}
+
+/* Dashboard route status cards */
+.dashboard-route-card {
+    min-height: 120px;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,.12);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Status badges */
+.badge {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Tables */
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+    table-layout: auto;
+    width: auto;
+}
+
+.table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    background-color: #f8f9fa;
+    padding: 0.75rem 0.5rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.table tbody td {
+    padding: 0.75rem 0.5rem;
+    vertical-align: middle;
+}
+
+/* Route Admin table edge alignment - v2 */
+.table thead th.ps-4 {
+    padding-left: 1.5rem !important;
+}
+
+.table thead th.pe-4 {
+    padding-right: 1.5rem !important;
+}
+
+.table tbody td.ps-4 {
+    padding-left: 1.5rem !important;
+}
+
+.table tbody td.pe-4 {
+    padding-right: 1.5rem !important;
+}
+
+/* Force table full width and edge alignment */
+.card-body .table-responsive {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.card-body .table-responsive .table {
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+/* Route Admin Table - Force Specific Edge Spacing */
+.table#route-admin-table.table thead th:first-child,
+.table#route-admin-table.table tbody td:first-child {
+    padding-left: 8px !important;
+}
+
+.table#route-admin-table.table thead th:last-child,
+.table#route-admin-table.table tbody td:last-child {
+    text-align: right !important;
+    padding-right: 8px !important;
+    width: 15% !important;
+}
+
+.table#route-admin-table.table thead th,
+.table#route-admin-table.table tbody td {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+}
+
+#route-admin-table .btn-group-sm .btn {
+    padding: 0.25rem 0.4rem !important;
+    font-size: 0.75rem !important;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Compact table styling for routes */
+.routes-table {
+    width: 100%;
+    max-width: none;
+}
+
+.routes-table th,
+.routes-table td {
+    padding: 0.5rem 0.75rem;
+}
+
+/* Desktop view - full width with proportional columns */
+@media (min-width: 768px) {
+    .routes-table {
+        width: 100%;
+        max-width: none;
+        table-layout: fixed;
+    }
+    
+    .routes-table th:first-child,
+    .routes-table td:first-child {
+        width: 33.33%;
+        text-align: center;
+    }
+    
+    .routes-table th:nth-child(2),
+    .routes-table td:nth-child(2) {
+        width: 33.33%;
+        text-align: center;
+    }
+    
+    .routes-table th:nth-child(3),
+    .routes-table td:nth-child(3) {
+        width: 33.33%;
+        text-align: center;
+    }
+}
+
+/* Mobile view - full width with proper status display */
+@media (max-width: 767px) {
+    .routes-table {
+        width: 100%;
+        table-layout: fixed;
+        margin: 0;
+    }
+    
+    .routes-table th,
+    .routes-table td {
+        padding: 0.5rem 0.25rem;
+        text-align: center;
+        border-left: none;
+        border-right: none;
+    }
+    
+    .routes-table th:first-child,
+    .routes-table td:first-child {
+        width: 30%;
+        text-align: center;
+    }
+    
+    .routes-table th:nth-child(2),
+    .routes-table td:nth-child(2) {
+        width: 40%;
+        text-align: center;
+    }
+    
+    .routes-table th:nth-child(3),
+    .routes-table td:nth-child(3) {
+        width: 30%;
+        text-align: center;
+    }
+    
+    .status-button {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.4rem;
+        white-space: nowrap;
+        width: 100%;
+        max-width: 100px;
+    }
+    
+    .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.4rem;
+    }
+}
+
+/* Buttons */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-group .btn {
+    margin-right: 0;
+}
+
+/* Modals */
+.modal-content {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+/* Forms */
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Statistics cards with gradients */
+.card.bg-primary {
+    background: linear-gradient(135deg, #0d6efd, #0a58ca) !important;
+    border: none;
+    color: white;
+}
+
+.card.bg-success {
+    background: linear-gradient(135deg, #198754, #157347) !important;
+    border: none;
+    color: white;
+}
+
+.card.bg-warning {
+    background: linear-gradient(135deg, #ffc107, #ffca2c) !important;
+    border: none;
+    color: #000;
+}
+
+.card.bg-info {
+    background: linear-gradient(135deg, #0dcaf0, #31d2f2) !important;
+    border: none;
+    color: #000;
+}
+
+/* Breadcrumbs */
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: ">";
+    color: #6c757d;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+}
+
+/* Empty states */
+.text-center.py-5 {
+    padding: 3rem 1rem !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .table-responsive {
+        border-radius: 8px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 6px !important;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Mobile container adjustments */
+    .container, .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+    
+    /* Mobile table adjustments */
+    .table {
+        font-size: 0.85rem;
+        min-width: 100%;
+        table-layout: fixed;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* Reduce spacing between Route and Status columns */
+    .table th:first-child,
+    .table td:first-child {
+        padding-right: 0.1rem !important;
+    }
+    
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        padding-left: 0.1rem !important;
+    }
+    
+    /* Route name mobile styling for parent routes */
+    .route-name-mobile {
+        line-height: 1.1 !important;
+        white-space: normal !important;
+        display: inline-block !important;
+        text-align: center !important;
+    }
+    
+    /* Mobile card adjustments */
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Mobile button adjustments */
+    .btn {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    /* Mobile modal adjustments */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    /* Mobile form adjustments */
+    .form-control, .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    /* Mobile navigation */
+    .navbar-collapse {
+        background-color: rgba(13, 110, 253, 0.95);
+        border-radius: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 1rem;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Alert improvements */
+.alert {
+    border-radius: 6px;
+    border: 1px solid transparent;
+}
+
+/* Profile image in navbar */
+.navbar-nav .nav-link img {
+    border: 2px solid rgba(255,255,255,.3);
+}
+
+/* Bus status indicators */
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge.bg-info {
+    background-color: #0dcaf0 !important;
+    color: #000 !important;
+}
+
+/* List group improvements */
+.list-group-item {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Custom scrollbar for light theme */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Landing page enhancements */
+.vh-100 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.vh-100 .card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+/* Text colors for light theme */
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Button variants for light theme */
+.btn-outline-primary:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-outline-success:hover {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn-outline-warning:hover {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.btn-outline-info:hover {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: #000;
+}
+
+/* Status button sizing - uniform size for all status buttons */
+.status-button {
+    width: 105px !important;
+    height: 42px !important;
+    padding: 0.3rem 0.3rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 500;
+    white-space: nowrap;
+    text-align: center;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    min-width: 105px !important;
+    max-width: 105px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Mobile-friendly larger buttons and checkboxes */
+@media (max-width: 768px) {
+    .status-button {
+        width: 100px !important;
+        height: 46px !important;
+        padding: 0.4rem 0.3rem !important;
+        font-size: 0.8rem !important;
+        min-width: 100px !important;
+        max-width: 100px !important;
+        flex-shrink: 0 !important;
+    }
+    
+    /* Mobile checkbox improvements */
+    .form-check-input {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        margin-top: 0.125rem !important;
+        cursor: pointer;
+        border: 2px solid #6c757d;
+        border-radius: 0.25rem;
+    }
+    
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    /* Larger touch target for checkboxes */
+    .form-check {
+        min-height: 2rem;
+        padding-left: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Table checkboxes with larger touch targets */
+    .table .form-check-input {
+        width: 1.8rem !important;
+        height: 1.8rem !important;
+        margin: 0 auto;
+        display: block;
+    }
+    
+    /* Center checkboxes in table cells */
+    .table td:has(.form-check-input) {
+        text-align: center;
+        vertical-align: middle;
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+/* Ultra mobile adjustments for very small screens */
+@media (max-width: 576px) {
+    .container {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+    }
+    
+    .table-responsive {
+        margin-left: -5px;
+        margin-right: -5px;
+    }
+    
+    .status-button {
+        width: 85px !important;
+        font-size: 0.7rem !important;
+        min-width: 85px !important;
+        max-width: 85px !important;
+    }
+    
+    /* Make cards take full width */
+    .col-md-6, .col-lg-4, .col-lg-3 {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Adjust dashboard cards for mobile */
+    .dashboard-route-card {
+        min-height: 100px;
+    }
+    
+    /* Stack buttons vertically on very small screens */
+    .btn-group-vertical .btn {
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Mobile table header adjustments */
+    .table th {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.2rem;
+    }
+    
+    /* Mobile table data adjustments */
+    .table td {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.2rem;
+        vertical-align: middle;
+    }
+    
+    /* Mobile button group improvements */
+    .d-flex.gap-2 {
+        gap: 0.25rem !important;
+        flex-wrap: wrap;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* Ultra small screen checkbox adjustments */
+    .form-check-input {
+        width: 2rem !important;
+        height: 2rem !important;
+        border-width: 3px !important;
+    }
+    
+    .table .form-check-input {
+        width: 2.2rem !important;
+        height: 2.2rem !important;
+    }
+    
+    /* Increase touch target padding around checkboxes */
+    .table td:has(.form-check-input) {
+        padding: 1rem 0.75rem;
+    }
+}
+
+/* Remove fixed widths and improve mobile scrolling */
+body {
+    overflow-x: hidden;
+}
+
+.table-responsive {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Enhanced checkbox styling for all screen sizes */
+.form-check-input {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-check-input:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-check-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Removed old select all checkbox styling - using button system now */
+
+/* Mobile dashboard improvements */
+@media (max-width: 768px) {
+    /* Dashboard card header improvements */
+    .card-header .d-flex {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    .card-header .text-end {
+        text-align: left !important;
+        margin-top: 1rem;
+    }
+    
+    /* Class filter dropdown mobile sizing */
+    .class-filter-mobile {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Class check-in summary badges stacking */
+    .d-flex.gap-3 {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        align-items: stretch !important;
+    }
+    
+    .d-flex.gap-3 .badge {
+        display: block !important;
+        text-align: center !important;
+        padding: 0.75rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* All table headers consistent sizing on mobile */
+    .mobile-transport-header {
+        text-align: center !important;
+        line-height: 1.1 !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        vertical-align: middle !important;
+        padding: 0.5rem 0.2rem !important;
+    }
+    
+    /* Allow text wrapping in parent route badges only */
+    .mobile-route-wrap {
+        white-space: normal !important;
+        line-height: 1.2 !important;
+        padding: 0.3rem 0.5rem !important;
+        text-align: center !important;
+        display: inline-block !important;
+        min-height: 2.2rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    /* Optimize column widths for class check-in table */
+    .mobile-transport-col {
+        width: 25% !important;
+        padding: 0.4rem 0.2rem !important;
+        text-align: center !important;
+    }
+    
+    .mobile-area-col {
+        width: 20% !important;
+        padding: 0.4rem 0.2rem !important;
+        font-size: 0.75rem !important;
+        text-align: center !important;
+    }
+    
+    .mobile-students-col {
+        width: 30% !important;
+        padding: 0.4rem 0.2rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .mobile-status-col {
+        width: 25% !important;
+        padding: 0.4rem 0.2rem !important;
+        text-align: center !important;
+    }
+    
+    /* Mobile table adjustments */
+    .table-responsive {
+        border: none !important;
+        overflow-x: auto !important;
+    }
+    
+    .table {
+        font-size: 0.85rem !important;
+        min-width: 100% !important;
+    }
+    
+    .table td {
+        word-wrap: break-word !important;
+        white-space: normal !important;
+    }
+}
+
+/* Ultra small screen adjustments for class check-in */
+@media (max-width: 576px) {
+    /* Smaller text and padding for very small screens */
+    .mobile-transport-header {
+        font-size: 0.7rem !important;
+        padding: 0.4rem 0.1rem !important;
+    }
+    
+    .mobile-transport-col {
+        width: 25% !important;
+        padding: 0.3rem 0.1rem !important;
+    }
+    
+    .mobile-area-col {
+        width: 20% !important;
+        padding: 0.3rem 0.1rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .mobile-students-col {
+        width: 30% !important;
+        font-size: 0.75rem !important;
+        padding: 0.3rem 0.1rem !important;
+    }
+    
+    .mobile-status-col {
+        width: 25% !important;
+        padding: 0.3rem 0.1rem !important;
+    }
+    
+    .mobile-route-wrap {
+        font-size: 0.65rem !important;
+        padding: 0.25rem 0.35rem !important;
+        min-height: 2rem !important;
+    }
+    
+    /* Status button mobile adjustments */
+    .status-button {
+        width: 80px !important;
+        height: 36px !important;
+        font-size: 0.65rem !important;
+        padding: 0.2rem !important;
+    }
+    
+    /* Card body padding reduction */
+    .card-body {
+        padding: 0.75rem !important;
+    }
+    
+    /* Dashboard header improvements */
+    .card-header {
+        padding: 0.75rem !important;
+    }
+    
+    .card-header h5 {
+        font-size: 1rem !important;
+    }
+}
+
+/* Ensure tables don't exceed viewport width */
+@media (max-width: 767px) {
+    .table {
+        width: 100%;
+        table-layout: auto;
+    }
+    
+    /* Specific column width adjustments for mobile */
+    .table th:first-child,
+    .table td:first-child {
+        min-width: 60px; /* Route column - slightly larger for parent names */
+        max-width: 80px;
+        padding-right: 5px !important;
+        vertical-align: middle !important;
+    }
+    
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+        width: 20px; /* Checkbox column - made smaller */
+        max-width: 25px;
+        padding: 0.4rem 0.2rem !important;
+    }
+    
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+        min-width: 90px; /* Status column - closer to route */
+        max-width: 110px;
+        padding-left: 5px !important;
+    }
+    
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+        min-width: 90px; /* Guide column */
+        max-width: 110px;
+    }
+    
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        min-width: 40px; /* Students column */
+        max-width: 60px;
+        text-align: center;
+    }
+}
+/* Cache buster: 1754759744 */
+/* Force refresh: 1754759942 */

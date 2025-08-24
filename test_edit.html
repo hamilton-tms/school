@@ -1,0 +1,18 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <button onclick="editStudent('test-id', "Test Name", "Class 1", "Parent", "123", false, false, "", "", "", "", "", "")">Test Edit</button>
+    
+    <script>
+    function editStudent(studentId, name, className, parentName, parentPhone, hasMedicalNeeds, requiresPediatricFirstAid, medicalNotes, harness, safeguardingNotes, address, parent2Name, parent2Phone) {
+        console.log('editStudent called with:', arguments);
+        alert('Edit function called for: ' + name);
+    }
+    </script>
+</body>
+</html>

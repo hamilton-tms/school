@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Hamilton TMS{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="{{ url_for('static', filename='css/custom.css') }}?v=1754761000" rel="stylesheet">
+    <style>
+        /* GLOBAL: Immediately hide any old selectAll elements across all pages */
+        #selectAll,
+        input[id="selectAll"],
+        .form-check-input#selectAll,
+        label[for="selectAll"],
+        input[type="checkbox"][id="selectAll"],
+        *[id*="selectAll"]:not(#selectAllBtn):not(#selectAllIcon):not(#selectAllText) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            position: absolute !important;
+            left: -9999px !important;
+            top: -9999px !important;
+            width: 0 !important;
+            height: 0 !important;
+            z-index: -9999 !important;
+            pointer-events: none !important;
+        }
+        
+        /* Immediate layout stabilization for students page */
+        .table-fixed {
+            table-layout: fixed !important;
+            width: 100% !important;
+        }
+        /* Prevent FOUC (Flash of Unstyled Content) only on students page */
+        .students-page .table-responsive {
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        .students-page .table-responsive.loaded {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('routes') }}">
+                <i class="fas fa-bus me-2"></i>Hamilton TMS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <!-- Check if user is a class account to show appropriate navigation -->
+                    {% set is_class_account = false %}
+                    {% if current_user.is_authenticated %}
+                        <!-- Simple username-based check for class accounts -->
+                        {% if current_user.username == 'classes' %}
+                            {% set is_class_account = true %}
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if is_class_account %}
+                        <!-- Class account navigation - Dashboard only -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        </li>
+                    {% else %}
+                        <!-- Admin navigation items -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('routes') }}">
+                                <i class="fas fa-route me-1"></i>Check-in
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('students') }}">
+                                <i class="fas fa-user-graduate me-1"></i>Students
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('schools') }}">
+                                <i class="fas fa-cog me-1"></i>Route Admin
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('providers') }}">
+                                <i class="fas fa-truck me-1"></i>Providers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('staff') }}">
+                                <i class="fas fa-users me-1"></i>Staff
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-2"></i>
+                            {% if current_user.username == 'gfokti@hamilton.bham.sch.uk' %}
+                                Gabriella Fokti
+                            {% elif current_user.username == 'admin' %}
+                                Administrator
+                            {% else %}
+                                {{ current_user.username }}
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}">
+                                <i class="fas fa-user me-2"></i>My Profile
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="{% if current_user.is_authenticated %}mt-4{% endif %}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% if current_user.is_authenticated and not request.endpoint == 'routes' %}
+    <script src="{{ url_for('static', filename='js/realtime.js') }}"></script>
+    {% endif %}
+    <!-- Audio notification system for class accounts -->
+    {% if current_user.is_authenticated and not is_admin %}
+    <script>
+        // Pass account type directly to JavaScript for reliable detection
+        window.isClassAccount = true;
+        window.accountType = 'class';
+    </script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script>
+        // Mark this page as a class account for audio system detection (fallback)
+        document.body.setAttribute('data-account-type', 'class');
+        document.body.classList.add('class-account');
+    </script>
+    {% endif %}
+</body>
+</html>

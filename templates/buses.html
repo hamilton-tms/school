@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Routes Management - Hamilton Transport Management{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2 mb-3">
+                <i class="fas fa-route me-2"></i>Routes Management
+            </h1>
+            <p class="text-muted">Manage all routes across all schools</p>
+        </div>
+    </div>
+
+    <!-- Buses List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    {% if buses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Route Number</th>
+                                    <th>School</th>
+                                    <th>Route Name</th>
+                                    <th>Capacity</th>
+                                    <th>Driver</th>
+                                    <th>Guides</th>
+                                    <th>Students</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bus_id, bus in buses.items() %}
+                                <tr>
+                                    <td><strong>{{ bus.route_number }}</strong></td>
+                                    <td>
+                                        {% if bus.school_id in schools %}
+                                            <a href="{{ url_for('school_detail', school_id=bus.school_id) }}" class="text-decoration-none">
+                                                {{ schools[bus.school_id].name }}
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ bus.route_name }}</td>
+                                    <td>{{ bus.capacity }}</td>
+                                    <td>
+                                        {% if bus.driver_id and bus.driver_id in staff_dict %}
+                                            <span class="badge bg-success">{{ staff_dict[bus.driver_id].name }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Not Assigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if bus.guide_ids and bus.guide_ids|length > 0 %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for guide_id in bus.guide_ids %}
+                                                    {% if guide_id in staff_dict %}
+                                                        <span class="badge bg-success">{{ staff_dict[guide_id].name }}</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="badge bg-warning">Not Assigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ bus.student_ids|length }} / {{ bus.capacity }}</span>
+                                    </td>
+                                    <td>
+                                        {% if bus.is_ready %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle me-1"></i>Ready
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>Not Ready
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('school_detail', school_id=bus.school_id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No routes added yet</h5>
+                        <p class="text-muted">Add routes to schools to start managing transportation</p>
+                        <a href="{{ url_for('schools') }}" class="btn btn-primary">
+                            <i class="fas fa-school me-2"></i>Go to Schools
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

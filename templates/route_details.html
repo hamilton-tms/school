@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Route {{ route.route_number }} Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Route {{ route.route_number }} Details</h1>
+                <a href="{{ url_for('routes') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Transport Check-in
+                </a>
+            </div>
+            
+            <!-- Route Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Route Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Route Number:</strong> {{ route.route_number }}</p>
+                            <!-- Alert Badges -->
+                            {% set safeguarding_students = [] %}
+                            {% for student_id, student in students %}
+                                {% if student.safeguarding_notes %}
+                                    {% set _ = safeguarding_students.append(student) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if safeguarding_students %}
+                                <div class="mb-2">
+                                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                                    <strong class="text-danger">Alert Badges:</strong>
+                                    {% for student in safeguarding_students %}
+                                        <span class="badge bg-danger ms-2" style="cursor: pointer;" onclick="showSafeguardingAlert('{{ student.name }}', '{{ student.safeguarding_notes }}')">
+                                            <i class="fas fa-shield-alt me-1"></i>{{ student.name }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <p><strong>Provider:</strong> {{ provider.name }}</p>
+                            <p><strong>Area:</strong> {{ area.name }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if route.status == 'not_present' %}
+                                    <span class="badge bg-danger">Not Present</span>
+                                {% elif route.status == 'arrived' %}
+                                    <span class="badge bg-warning">Arrived</span>
+                                {% elif route.status == 'ready' %}
+                                    <span class="badge bg-success">Ready</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if provider.name != 'Parent' %}
+                                <p><strong>Provider Contact:</strong> {{ provider.contact_name }}</p>
+                                <p><strong>Phone:</strong> {{ provider.contact_phone }}</p>
+                                <p><strong>Email:</strong> {{ provider.contact_email }}</p>
+                            {% else %}
+                                <p><strong>Collection Type:</strong> Parent Collection</p>
+                                <p><em>Individual parent contact information shown below for each child</em></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+        </div>
+    </div>
+</div>
+
+<!-- Safeguarding Alert Modal -->
+<div class="modal fade" id="safeguardingAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-shield-alt text-danger me-2"></i>
+                    Safeguarding Alert - <span id="safeguardingStudentName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> This student has a safeguarding alert that requires attention.
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Safeguarding Notes:</h6>
+                        <p class="card-text" id="safeguardingNotes"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showSafeguardingAlert(studentName, safeguardingNotes) {
+    document.getElementById('safeguardingStudentName').textContent = studentName;
+    document.getElementById('safeguardingNotes').textContent = safeguardingNotes;
+    
+    var modal = new bootstrap.Modal(document.getElementById('safeguardingAlertModal'));
+    modal.show();
+}
+</script>
+
+{% endblock %}

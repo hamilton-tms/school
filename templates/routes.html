@@ -1,0 +1,2272 @@
+{% extends "base.html" %}
+
+{% block title %}Transport Check-in - Hamilton Transport Management{% endblock %}
+
+{% block head %}
+<!-- Prevent caching to ensure fresh data on every page load -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+/* CRITICAL: Immediately hide old select all elements to prevent flash */
+#selectAll,
+input[id="selectAll"],
+.form-check-input#selectAll,
+label[for="selectAll"],
+.form-check:has(input[id="selectAll"]),
+input[type="checkbox"][id="selectAll"],
+.form-check input[id="selectAll"],
+div:has(input[id="selectAll"]),
+*[id*="selectAll"]:not(#selectAllBtn):not(#selectAllIcon):not(#selectAllText) { 
+    display: none !important; 
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    z-index: -9999 !important;
+    pointer-events: none !important;
+    max-width: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Extra aggressive hiding for any potential flashes */
+body #selectAll,
+html #selectAll,
+form #selectAll,
+div #selectAll,
+table #selectAll,
+* #selectAll {
+    display: none !important;
+}
+
+/* Mobile-specific ultra aggressive hiding */
+@media (max-width: 768px) {
+    #selectAll,
+    input[id="selectAll"],
+    .form-check-input#selectAll,
+    label[for="selectAll"],
+    *[id*="selectAll"]:not(#selectAllBtn):not(#selectAllIcon):not(#selectAllText) {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        position: fixed !important;
+        left: -10000px !important;
+        top: -10000px !important;
+        width: 0 !important;
+        height: 0 !important;
+        z-index: -10000 !important;
+        pointer-events: none !important;
+        transform: scale(0) !important;
+    }
+    
+    /* Ensure legitimate button doesn't flash during load and stays in place */
+    #selectAllBtn {
+        animation: none !important;
+        transition: visibility 0.1s !important;
+        position: relative !important;
+        display: inline-block !important;
+    }
+}
+
+/* Bulk action button text - always show short form */
+.bulk-action-text::before {
+    content: "";
+}
+
+/* Desktop: Add "Mark as " prefix with CSS */
+@media (min-width: 992px) {
+    .bulk-action-text::before {
+        content: "Mark as ";
+    }
+}
+
+/* Prevent flash during page load - start buttons invisible and in final position */
+.bulk-actions-mobile button {
+    visibility: hidden;
+}
+
+/* Show buttons after page loads */
+.bulk-actions-loaded .bulk-actions-mobile button {
+    visibility: visible;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2 mb-3">
+                <i class="fas fa-route me-2"></i>Transport Check-in
+            </h1>
+        </div>
+    </div>
+
+
+
+
+
+    <!-- Buses List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    {% if routes %}
+                    <!-- Filters and Bulk Actions -->
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <div class="row align-items-center">
+                            <div class="col-12">
+                                <!-- Buttons layout with area filters left and bulk actions right -->
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mobile-stack">
+                                    <!-- Area Filters - Desktop View -->
+                                    <div class="d-flex gap-2 flex-wrap align-items-center d-none d-md-flex">
+                                        <button type="button" onclick="filterByArea('{{ url_for('routes') }}')" class="btn {% if not request.args.get('area_id') %}btn-secondary{% else %}btn-outline-secondary{% endif %}" style="height: 38px;">
+                                            <i class="fas fa-list me-1"></i>Show All
+                                        </button>
+                                        {% for area_id, area in areas.items() %}
+                                            {% if area.name != 'Multiple areas' %}
+                                            <button type="button" onclick="filterByArea('{{ url_for('routes', area_id=area_id) }}')" class="btn {% if request.args.get('area_id') == area_id %}btn-secondary{% else %}btn-outline-secondary{% endif %}" style="height: 38px;">
+                                                <i class="fas fa-map-marker-alt me-1"></i>{{ area.name }}
+                                            </button>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    <!-- Area Filters - Mobile Dropdown -->
+                                    <div class="d-block d-md-none mobile-dropdown-stable">
+                                        <select class="form-select" style="height: 38px;" onchange="filterByArea(this.value)" id="areaFilterSelect" name="area_filter">
+                                            <option value="{{ url_for('routes') }}" {% if not request.args.get('area_id') %}selected{% endif %}>
+                                                📋 Show All Areas
+                                            </option>
+                                            {% for area_id, area in areas.items() %}
+                                                {% if area.name != 'Multiple areas' %}
+                                                <option value="{{ url_for('routes', area_id=area_id) }}" {% if request.args.get('area_id') == area_id %}selected{% endif %}>
+                                                    📍 {{ area.name }}
+                                                </option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Bulk Actions - Right Side -->
+                                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                                        <!-- Select All Button -->
+                                        <button type="button" class="btn btn-outline-secondary select-all-mobile" id="selectAllBtn" onclick="toggleSelectAll()" style="height: 38px; visibility: hidden;">
+                                            <i class="fas fa-check-square" id="selectAllIcon"></i> <span id="selectAllText">Select All</span>
+                                        </button>
+                                        
+                                        <!-- Bulk Action Buttons -->
+                                        <div class="d-flex gap-2 flex-wrap bulk-actions-mobile">
+                                            <button type="button" class="btn btn-warning" onclick="bulkUpdateStatus('arrived')" disabled id="bulkArrivedBtn" style="height: 38px;">
+                                                <i class="fas fa-truck"></i> <span class="bulk-action-text">Arrived</span>
+                                            </button>
+                                            <button type="button" class="btn btn-success" onclick="bulkUpdateStatus('ready')" disabled id="bulkReadyBtn" style="height: 38px;">
+                                                <i class="fas fa-check"></i> <span class="bulk-action-text">Ready</span>
+                                            </button>
+                                            <button type="button" class="btn btn-danger" onclick="bulkUpdateStatus('not_present')" disabled id="bulkNotPresentBtn" style="height: 38px;">
+                                                <i class="fas fa-times"></i> <span class="bulk-action-text">Not Present</span>
+                                            </button>
+                                            <button type="button" class="btn btn-secondary" onclick="resetAllRoutes()" id="resetAllBtn" style="height: 38px;">
+                                                <i class="fas fa-undo"></i> <span id="resetAllText">{% if request.args.get('area_id') %}Reset Area{% else %}Reset All{% endif %}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover routes-table" style="min-width: 950px;">
+                            <colgroup>
+                                <col style="width: 14%;">
+                                <col style="width: 36%;">
+                                <col style="width: 25%;">
+                                <col style="width: 25%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 14%; font-size: 0.8rem;">Route</th>
+                                    <th class="text-center" style="width: 36%; font-size: 0.8rem; white-space: nowrap;">
+                                        <span class="d-none d-sm-inline">Alerts</span>
+                                        <span class="d-sm-none">Alerts</span>
+                                    </th>
+                                    <th class="text-center" style="width: 25%; font-size: 0.8rem;">Status</th>
+                                    <th class="text-center" style="width: 25%; font-size: 0.8rem;">Students</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route_id, route in routes.items() %}
+                                <tr>
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <!-- Centered checkbox -->
+                                            <div class="mb-2">
+                                                <input type="checkbox" class="form-check-input route-checkbox" value="{{ route_id }}" onchange="updateBulkButtons()" style="transform: scale(1.2);">
+                                            </div>
+                                            <!-- Route name underneath -->
+                                            <div class="text-center">
+                                                <a href="{{ url_for('route_details', route_id=route_id) }}" class="btn btn-link text-decoration-none p-0" title="Click to view route details">
+                                                    {% if "'s Parent" in route.route_number %}
+                                                        {% set child_name = route.route_number.replace("'s Parent", "") %}
+                                                        <strong class="small route-name-mobile">{{ child_name }}<br>Parent</strong>
+                                                    {% else %}
+                                                        <strong class="small">{{ route.route_number }}</strong>
+                                                    {% endif %}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <!-- Alert badges column -->
+                                        {% set safeguarding_students = [] %}
+                                        {% set pediatric_first_aid_students = [] %}
+                                        {# Check all students to find those assigned to this route #}
+                                        {% for student_id, student in students.items() %}
+                                            {% if student.get('route_id') == route_id %}
+                                                {% if student and student.get('safeguarding_notes') %}
+                                                    {% if student.get('safeguarding_notes')|length > 0 %}
+                                                        {% set _ = safeguarding_students.append(student_id) %}
+                                                    {% endif %}
+                                                {% endif %}
+                                                {% if student and (student.get('requires_pediatric_first_aid') == 'True' or student.get('requires_pediatric_first_aid') == True or student.get('requires_pediatric_first_aid') == 'true') %}
+                                                    {% set _ = pediatric_first_aid_students.append(student_id) %}
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% set safeguarding_count = safeguarding_students|length %}
+                                        {% set pediatric_count = pediatric_first_aid_students|length %}
+                                        {% if safeguarding_count > 0 or pediatric_count > 0 %}
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                {% if safeguarding_count > 0 %}
+                                                    <button class="btn btn-danger btn-sm" style="cursor: pointer;" onclick="showRouteSafeguardingAlerts('{{ route_id }}', '{{ route.route_number }}')" title="{{ safeguarding_count }} Safeguarding Alert(s) - Click to view">
+                                                        <i class="fas fa-shield-alt me-1"></i>S{{ safeguarding_count }}
+                                                    </button>
+                                                {% endif %}
+                                                {% if pediatric_count > 0 %}
+                                                    <button class="btn btn-primary btn-sm" style="cursor: pointer;" onclick="showRoutePediatricFirstAidAlerts('{{ route_id }}', '{{ route.route_number }}')" title="{{ pediatric_count }} Pediatric First Aid Requirement(s) - Click to view">
+                                                        <i class="fas fa-user-md me-1"></i>P{{ pediatric_count }}
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="status-button btn btn-{% if route.status == 'ready' %}success{% elif route.status == 'arrived' %}warning{% else %}danger{% endif %}" 
+                                                title="Click to cycle route status" 
+                                                onclick="cycleRouteStatus('{{ route_id }}', this); event.stopPropagation();"
+                                                data-route-id="{{ route_id }}"
+                                                data-current-status="{{ route.status }}">
+                                            {% if route.status == 'ready' %}
+                                                <i class="fas fa-check-circle me-1"></i>Ready
+                                            {% elif route.status == 'arrived' %}
+                                                <i class="fas fa-truck me-1"></i>Arrived
+                                            {% else %}
+                                                <i class="fas fa-times-circle me-1"></i>Not Present
+                                            {% endif %}
+                                        </button>
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#studentsModal{{ route_id }}" onclick="console.log('Opening modal for route {{ route_id }}')">
+                                            <i class="fas fa-users me-1"></i>{{ route.students_count if route.students_count is defined else (route.student_ids|length if route.student_ids else 0) }}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-route fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">{% if request.args.get('area_id') %}No routes found for this area{% else %}No routes added yet{% endif %}</h5>
+                        <p class="text-muted">{% if request.args.get('area_id') %}No routes with students are assigned to this area{% else %}Add routes and assign students to start managing transportation{% endif %}</p>
+                        <a href="{{ url_for('schools') }}" class="btn btn-primary">
+                            <i class="fas fa-cog me-2"></i>Go to Route Admin
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom spacing -->
+<div style="height: 60px;"></div>
+
+<!-- Provider Info Modals -->
+{% for provider_id, provider in providers.items() %}
+<div class="modal fade" id="providerModal{{ provider_id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ provider.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Contact Name:</strong><br>
+                        {{ provider.contact_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Phone:</strong><br>
+                        <a href="tel:{{ provider.contact_phone }}">{{ provider.contact_phone }}</a>
+                    </div>
+                </div>
+                {% if provider.contact_email %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <strong>Email:</strong><br>
+                        <a href="mailto:{{ provider.contact_email }}">{{ provider.contact_email }}</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Student List Modals -->
+{% for route_id, route in routes.items() %}
+<div class="modal fade" id="studentsModal{{ route_id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Students on Route {{ route.route_number }} - Current Time: {{ moment().format('HH:mm:ss') if moment else 'Updated' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% set route_students = [] %}
+                {% for student_id, student in students.items() %}
+                    {% if student.route_id == route_id %}
+                        {% set _ = route_students.append(student) %}
+                    {% endif %}
+                {% endfor %}
+                {% if route_students %}
+                    <!-- Mobile-optimized view - show only on small screens -->
+                    <div class="d-block d-md-none">
+                        {% for student in route_students %}
+                            <div class="card mb-3 border">
+                                <div class="card-body p-3">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <h6 class="card-title mb-2"><strong>{{ student.name }}</strong></h6>
+                                            <div class="text-muted small mb-2">Class: {{ student.class_name or 'N/A' }}</div>
+                                        </div>
+                                        <div class="col-6 text-end">
+                                            <!-- Priority alerts first -->
+                                            <div class="mb-2">
+                                                {% if student.safeguarding_notes %}
+                                                    <span class="badge bg-danger text-white d-block mb-1 text-wrap" title="Safeguarding Alert - Click for details" onclick="showSafeguardingAlert('{{ student.name }}', '{{ student.safeguarding_notes|replace("'", "\\'") }}')" style="cursor: pointer;"><i class="fas fa-shield-alt me-1"></i>S</span>
+                                                {% endif %}
+                                                {% if student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True %}
+                                                    <span class="badge bg-primary text-white d-block mb-1 text-wrap" onclick="showMedicalInfo('{{ student.name }}', 'Requires Pediatric First Aid qualified staff member.', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" style="cursor: pointer;" title="Requires Pediatric First Aid - Click for details"><i class="fas fa-user-md me-1"></i>P</span>
+                                                {% endif %}
+                                                {% if student.harness == 'Yes' %}
+                                                    <span class="badge bg-warning text-dark d-block mb-1 text-wrap"><i class="fas fa-exclamation-triangle me-1"></i>Harness Required</span>
+                                                {% endif %}
+                                                {% if student.has_medical_needs == 'True' or student.has_medical_needs == True or student.medical_notes or student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True %}
+                                                    <button class="btn btn-info btn-sm d-block w-100" onclick="showMedicalInfo('{{ student.name }}', '{{ (student.medical_notes or '')|replace("'", "\\'") }}', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" title="Medical Information">
+                                                        <i class="fas fa-medical-bag me-1"></i>Medical
+                                                        {% if student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True %} + P{% endif %}
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Contact info - collapsible -->
+                                    <div class="mt-2">
+                                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#contact{{ student.id }}" aria-expanded="false">
+                                            <i class="fas fa-phone me-1"></i>Contact Info
+                                        </button>
+                                        <div class="collapse mt-2" id="contact{{ student.id }}">
+                                            {% if student.parent_name %}
+                                                <div class="small">
+                                                    <strong>{{ student.parent_name }}</strong>
+                                                    {% if student.parent_phone %}
+                                                        <br><a href="tel:{{ student.parent_phone }}" class="text-decoration-none"><i class="fas fa-phone me-1"></i>{{ student.parent_phone }}</a>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            {% if student.parent2_name %}
+                                                <div class="small mt-1">
+                                                    <strong>{{ student.parent2_name }}</strong>
+                                                    {% if student.parent2_phone %}
+                                                        <br><a href="tel:{{ student.parent2_phone }}" class="text-decoration-none"><i class="fas fa-phone me-1"></i>{{ student.parent2_phone }}</a>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            {% if not student.parent_name and not student.parent2_name %}
+                                                <span class="text-muted small">Not provided</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Desktop table view - hidden on mobile -->
+                    <div class="d-none d-md-block table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Class</th>
+                                    <th>Alerts</th>
+                                    <th>Harness</th>
+                                    <th>Medical</th>
+                                    <th>Parent/Carer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in route_students %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ student.name }}</strong>
+                                        </td>
+                                        <td>{{ student.class_name or 'N/A' }}</td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% if student.safeguarding_notes %}
+                                                    <span class="badge bg-danger text-white" title="Safeguarding Alert - Click for details" onclick="showSafeguardingAlert('{{ student.name }}', '{{ student.safeguarding_notes|replace("'", "\\'") }}')" style="cursor: pointer;">S</span>
+                                                {% endif %}
+                                                {% if student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True %}
+                                                    <span class="badge bg-primary text-white" onclick="showMedicalInfo('{{ student.name }}', 'Requires Pediatric First Aid qualified staff member.', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" style="cursor: pointer;" title="Requires Pediatric First Aid - Click for details">P</span>
+                                                {% endif %}
+                                                {% if not student.safeguarding_notes and not (student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True) %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if student.harness == 'Yes' %}
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Yes</span>
+                                            {% else %}
+                                                <span class="text-muted">No</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if student.has_medical_needs == 'True' or student.has_medical_needs == True or student.medical_notes or student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True %}
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    {% if student.has_medical_needs == 'True' or student.has_medical_needs == True or student.medical_notes %}
+                                                        <button class="btn btn-info btn-sm" onclick="showMedicalInfo('{{ student.name }}', '{{ (student.medical_notes or '')|replace("'", "\\'") }}', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" title="Click to view medical information">
+                                                            <i class="fas fa-medical-bag me-1"></i>Yes
+                                                        </button>
+                                                    {% endif %}
+                                                    {% if student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True %}
+                                                        <span class="badge bg-primary text-white" onclick="showMedicalInfo('{{ student.name }}', 'Requires Pediatric First Aid qualified staff member.', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" style="cursor: pointer;" title="Requires Pediatric First Aid - Click for details">P</span>
+                                                    {% endif %}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">No</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if student.parent_name %}
+                                                <div><strong>{{ student.parent_name }}</strong></div>
+                                                {% if student.parent_phone %}
+                                                    <div><a href="tel:{{ student.parent_phone }}" class="text-decoration-none"><i class="fas fa-phone me-1"></i>{{ student.parent_phone }}</a></div>
+                                                {% endif %}
+                                            {% endif %}
+                                            {% if student.parent2_name %}
+                                                <div class="mt-1"><strong>{{ student.parent2_name }}</strong></div>
+                                                {% if student.parent2_phone %}
+                                                    <div><a href="tel:{{ student.parent2_phone }}" class="text-decoration-none"><i class="fas fa-phone me-1"></i>{{ student.parent2_phone }}</a></div>
+                                                {% endif %}
+                                            {% endif %}
+                                            {% if not student.parent_name and not student.parent2_name %}
+                                                <span class="text-muted">Not provided</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                {% else %}
+                    <p class="text-muted">No students assigned to this route.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Route Detail Modals -->
+{% for route_id, route in routes.items() %}
+<div class="modal fade" id="routeDetailModal{{ route_id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Route {{ route.route_number }} Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <h6>{{ route.provider_name }}</h6>
+                    <p class="text-muted mb-0">Parking Area: <strong>{{ route.area_name }}</strong></p>
+                </div>
+                {% if route.provider_id in providers %}
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>Contact Person:</strong> {{ providers[route.provider_id].contact_name }}</p>
+                            <p><strong>Phone:</strong> 
+                                <a href="tel:{{ providers[route.provider_id].phone }}" class="text-decoration-none">
+                                    {{ providers[route.provider_id].phone }}
+                                </a>
+                            </p>
+                            {% if providers[route.provider_id].email %}
+                                <p><strong>Email:</strong> 
+                                    <a href="mailto:{{ providers[route.provider_id].email }}" class="text-decoration-none">
+                                        {{ providers[route.provider_id].email }}
+                                    </a>
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% elif route.provider_contact or route.provider_phone %}
+                    <div class="row">
+                        <div class="col-12">
+                            {% if route.provider_contact %}
+                                <p><strong>Contact Person:</strong> {{ route.provider_contact }}</p>
+                            {% endif %}
+                            {% if route.provider_phone %}
+                                <p><strong>Phone:</strong> 
+                                    <a href="tel:{{ route.provider_phone }}" class="text-decoration-none">
+                                        {{ route.provider_phone }}
+                                    </a>
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Provider contact information not available.</p>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Add Route Modal -->
+<div class="modal fade" id="addRouteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_route_from_routes') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="route_number" class="form-label">Route Name *</label>
+                        <input type="text" class="form-control" id="route_number" name="route_number" required>
+                    </div>
+                    
+                    {% if schools %}
+                        {% set first_school = schools.values() | first %}
+                        <input type="hidden" name="school_id" value="{{ first_school.id }}">
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="provider_id" class="form-label">Provider *</label>
+                        <select class="form-select" id="provider_id" name="provider_id" required>
+                            <option value="">Select Provider</option>
+                            {% for provider_id, provider in providers.items() %}
+                                <option value="{{ provider_id }}">{{ provider.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="area_selection" class="form-label">Area *</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="area_selection" id="existing_area" value="existing" checked onchange="toggleAreaOptions()">
+                            <label class="form-check-label" for="existing_area">
+                                Select existing area
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="area_selection" id="new_area" value="new" onchange="toggleAreaOptions()">
+                            <label class="form-check-label" for="new_area">
+                                Create new area
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="existing_area_section" class="mb-3">
+                        <label for="area_id" class="form-label">Select Area</label>
+                        <select class="form-select" id="area_id" name="area_id">
+                            <option value="">Choose an area...</option>
+                        </select>
+                    </div>
+                    
+                    <div id="new_area_section" class="mb-3" style="display: none;">
+                        <label for="new_area_name" class="form-label">New Area Name</label>
+                        <input type="text" class="form-control" id="new_area_name" name="new_area_name" placeholder="e.g., Main Entrance, Sports Hall">
+                        <label for="new_area_description" class="form-label mt-2">Description (optional)</label>
+                        <input type="text" class="form-control" id="new_area_description" name="new_area_description" placeholder="Brief description of the area">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="students" class="form-label">Assign Students (optional)</label>
+                        <select class="form-select" id="students" name="students" multiple size="5">
+                            <!-- Will be populated by JavaScript -->
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple students</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Route</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Areas data for dynamic population
+const areasData = {{ areas_json | safe }};
+const studentsData = {{ students_json | safe }};
+
+function updateAreas() {
+    const areaSelect = document.getElementById('area_id');
+    const studentsSelect = document.getElementById('students');
+    
+    // Clear existing options
+    areaSelect.innerHTML = '<option value="">Choose an area...</option>';
+    studentsSelect.innerHTML = '';
+    
+    // Populate all areas (since we're only dealing with one school), but exclude "Multiple areas"
+    if (areasData) {
+        Object.values(areasData).forEach(schoolAreas => {
+            Object.entries(schoolAreas).forEach(([areaId, area]) => {
+                // Skip "Multiple areas" as it's reserved for administrative use
+                if (area.name !== 'Multiple areas') {
+                    const option = document.createElement('option');
+                    option.value = areaId;
+                    option.textContent = area.name;
+                    areaSelect.appendChild(option);
+                }
+            });
+        });
+    }
+    
+    // Show all available students (since they can be assigned to any route)
+    if (studentsData) {
+        Object.entries(studentsData).forEach(([studentId, student]) => {
+            const option = document.createElement('option');
+            option.value = studentId;
+            option.textContent = `${student.name} (${student.class_name})`;
+            studentsSelect.appendChild(option);
+        });
+    }
+}
+
+function toggleAreaOptions() {
+    const isExisting = document.getElementById('existing_area').checked;
+    const existingSection = document.getElementById('existing_area_section');
+    const newSection = document.getElementById('new_area_section');
+    
+    if (isExisting) {
+        existingSection.style.display = 'block';
+        newSection.style.display = 'none';
+        document.getElementById('area_id').required = true;
+        document.getElementById('new_area_name').required = false;
+    } else {
+        existingSection.style.display = 'none';
+        newSection.style.display = 'block';
+        document.getElementById('area_id').required = false;
+        document.getElementById('new_area_name').required = true;
+    }
+}
+
+
+
+// Bulk actions functionality
+function updateBulkButtons() {
+    const checkboxes = document.querySelectorAll('.route-checkbox:checked');
+    const bulkButtons = ['bulkArrivedBtn', 'bulkReadyBtn', 'bulkNotPresentBtn'];
+    
+    // Enable/disable bulk action buttons based on selection
+    bulkButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.disabled = checkboxes.length === 0;
+        }
+    });
+    
+    // Update select all button state
+    const allCheckboxes = document.querySelectorAll('.route-checkbox');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const selectAllIcon = document.getElementById('selectAllIcon');
+    const selectAllText = document.getElementById('selectAllText');
+    
+    if (selectAllBtn && selectAllIcon && selectAllText) {
+        const allChecked = checkboxes.length === allCheckboxes.length;
+        const someChecked = checkboxes.length > 0;
+        
+        if (allChecked && allCheckboxes.length > 0) {
+            // All selected
+            selectAllBtn.className = 'btn btn-secondary select-all-mobile';
+            selectAllIcon.className = 'fas fa-check-square';
+            selectAllText.textContent = 'Deselect All';
+        } else if (someChecked) {
+            // Some selected
+            selectAllBtn.className = 'btn btn-secondary select-all-mobile';
+            selectAllIcon.className = 'fas fa-minus-square';
+            selectAllText.textContent = 'Deselect All';
+        } else {
+            // None selected
+            selectAllBtn.className = 'btn btn-outline-secondary select-all-mobile';
+            selectAllIcon.className = 'fas fa-check-square';
+            selectAllText.textContent = 'Select All';
+        }
+    }
+}
+
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.route-checkbox');
+    const checkedBoxes = document.querySelectorAll('.route-checkbox:checked');
+    
+    // If all are checked, uncheck all. Otherwise, check all.
+    const shouldCheck = checkedBoxes.length !== checkboxes.length;
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = shouldCheck;
+    });
+    
+    updateBulkButtons();
+}
+
+function bulkUpdateStatus(status) {
+    console.log(`🔧 iPad Debug: Bulk function called with status: ${status}`);
+    const checkboxes = document.querySelectorAll('.route-checkbox:checked');
+    const routeIds = Array.from(checkboxes).map(cb => cb.value);
+    console.log(`🔧 iPad Debug: Found ${checkboxes.length} checked routes:`, routeIds);
+    
+
+
+    
+    if (routeIds.length === 0) {
+        alert('Please select at least one route to update.');
+        return;
+    }
+    
+    // Disable bulk buttons during update
+    const bulkButtons = ['bulkArrivedBtn', 'bulkReadyBtn', 'bulkNotPresentBtn'];
+    bulkButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span class="bulk-action-text">Updating...</span>';
+        }
+    });
+    
+    // Prepare form data
+    const formData = new FormData();
+    routeIds.forEach(routeId => {
+        formData.append('route_ids', routeId);
+    });
+    formData.append('status', status);
+    
+    // Add CSRF token
+    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
+    
+    // Send AJAX request
+    console.log('🔧 iPad Debug: Starting fetch to /routes/bulk-update-status...');
+    fetch('/routes/bulk-update-status', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => {
+        console.log('🔧 iPad Debug: Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('🔧 iPad Debug: Response data:', data);
+        if (data.success) {
+            // Update UI for each route
+            routeIds.forEach(routeId => {
+                console.log('Updating UI for route:', routeId);
+                // Find the status button for this route
+                const statusButton = document.querySelector(`button[data-route-id="${routeId}"]`);
+                if (statusButton) {
+                    console.log('Found status button for route:', routeId);
+                    // Update button classes and content
+                    statusButton.className = `status-button btn btn-${data.status_color}`;
+                    statusButton.setAttribute('data-current-status', data.status);
+                    
+                    if (data.status === 'ready') {
+                        statusButton.innerHTML = '<i class="fas fa-check-circle me-1"></i>Ready';
+                    } else if (data.status === 'arrived') {
+                        statusButton.innerHTML = '<i class="fas fa-truck me-1"></i>Arrived';
+                    } else {
+                        statusButton.innerHTML = '<i class="fas fa-times-circle me-1"></i>Not Present';
+                    }
+                } else {
+                    console.log('Status button not found for route:', routeId);
+                }
+            });
+            
+            // Trigger audio notification for class accounts  
+            console.log('🔊 DEBUG: Bulk operation completed, checking account type...');
+            {% if current_user.account_type == 'class' %}
+            console.log('🔊 DEBUG: Class account confirmed - audio checks starting');
+            console.log('🔊 DEBUG: typeof playRouteReadySound =', typeof playRouteReadySound);
+            console.log('🔊 DEBUG: data.status =', data.status);
+            if (data.status === 'ready' && typeof playRouteReadySound === 'function') {
+                console.log('🔊 Routes: Triggering audio for bulk Ready operation');
+                playRouteReadySound();
+            } else {
+                console.log('🔊 DEBUG: Audio not triggered. Status:', data.status, 'Function exists:', typeof playRouteReadySound === 'function');
+            }
+            {% else %}
+            console.log('🔊 DEBUG: Admin account - no audio needed');
+            {% endif %}
+            
+            // Show success toast
+            showToast(`Successfully updated ${routeIds.length} routes to ${data.status_text}`, 'success');
+            
+            // Uncheck all checkboxes
+            checkboxes.forEach(cb => cb.checked = false);
+            // Note: Using button-based select all system now, no checkbox needed
+        } else {
+            showToast('Error updating routes: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating routes:', error);
+        showToast('Error updating routes. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Re-enable bulk buttons
+        bulkButtons.forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.disabled = false;
+                // Restore original button text
+                if (btnId === 'bulkArrivedBtn') {
+                    btn.innerHTML = '<i class="fas fa-truck"></i> <span class="bulk-action-text">Arrived</span>';
+                } else if (btnId === 'bulkReadyBtn') {
+                    btn.innerHTML = '<i class="fas fa-check"></i> <span class="bulk-action-text">Ready</span>';
+                } else if (btnId === 'bulkNotPresentBtn') {
+                    btn.innerHTML = '<i class="fas fa-times"></i> <span class="bulk-action-text">Not Present</span>';
+                }
+            }
+        });
+        
+        // Update bulk button states
+        updateBulkButtons();
+    });
+}
+
+function filterByArea(url) {
+    // Extract area_id from URL if present
+    const urlObj = new URL(url, window.location.origin);
+    const areaId = urlObj.searchParams.get('area_id');
+    
+    // Update browser URL without refresh
+    window.history.pushState({}, '', url);
+    
+    // Show loading state
+    const tableBody = document.querySelector('.routes-table tbody');
+    if (tableBody) {
+        tableBody.style.opacity = '0.7';
+    }
+    
+    // Reload the page content via AJAX
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Create a temporary element to parse the response
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        
+        // Extract the new table content
+        const newTableBody = tempDiv.querySelector('.routes-table tbody');
+        const newBulkActions = tempDiv.querySelector('.mb-3.p-3.bg-light.rounded');
+        
+        if (newTableBody && tableBody) {
+            // Replace table content
+            tableBody.innerHTML = newTableBody.innerHTML;
+            tableBody.style.opacity = '1';
+        }
+        
+        if (newBulkActions) {
+            // Update bulk actions section to reflect new area
+            const currentBulkActions = document.querySelector('.mb-3.p-3.bg-light.rounded');
+            if (currentBulkActions) {
+                currentBulkActions.innerHTML = newBulkActions.innerHTML;
+            }
+        }
+        
+        // Update bulk button states
+        updateBulkButtons();
+    })
+    .catch(error => {
+        console.error('Error filtering routes:', error);
+        // Fallback to page refresh if AJAX fails
+        window.location.href = url;
+    });
+}
+
+function resetAllRoutes() {
+    const resetBtn = document.getElementById('resetAllBtn');
+    if (!resetBtn) return;
+    
+    // Get current area filter from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const areaId = urlParams.get('area_id');
+    
+    // Update button text based on filter
+    const isFiltered = areaId && areaId !== '';
+    const actionText = isFiltered ? 'Reset Filtered Area' : 'Reset All Routes';
+    
+    // Disable button during request
+    const originalText = resetBtn.innerHTML;
+    resetBtn.disabled = true;
+    resetBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Resetting...';
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+    
+    // Prepare form data
+    const formData = new FormData();
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
+    
+    // Add area filter if present
+    if (areaId) {
+        formData.append('area_id', areaId);
+        console.log('Reset filtered to area:', areaId);
+    } else {
+        console.log('Reset all routes (no area filter)');
+    }
+    
+    // Make AJAX request to reset routes
+    fetch('/routes/reset-all', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData,
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update route status buttons to "Not Present" only for displayed routes
+            const statusButtons = document.querySelectorAll('[data-route-id]');
+            statusButtons.forEach(button => {
+                if (button.classList.contains('status-button') && button.getAttribute('onclick') && button.getAttribute('onclick').includes('cycleRouteStatus')) {
+                    // This is a route status button for a displayed route
+                    button.className = 'status-button btn btn-danger';
+                    button.innerHTML = '<i class="fas fa-times-circle me-1"></i>Not Present';
+                    button.setAttribute('data-current-status', 'not_present');
+                }
+            });
+            
+            // Clear all checkboxes
+            const checkboxes = document.querySelectorAll('.route-checkbox');
+            checkboxes.forEach(cb => cb.checked = false);
+            // Removed old selectAll checkbox - using button system now
+            
+            showToast(data.message, 'success');
+        } else {
+            showToast('Error resetting routes: ' + (data.error || 'Unknown error'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error resetting routes:', error);
+        showToast('Error resetting routes. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Re-enable button
+        resetBtn.disabled = false;
+        resetBtn.innerHTML = originalText;
+        
+        // Update bulk button states
+        updateBulkButtons();
+    });
+}
+
+function toggleGuidePresence(routeId, button) {
+    // Disable button during request
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+    
+    // Prepare form data
+    const formData = new FormData();
+    if (csrfToken) {
+        formData.append('csrf_token', csrfToken);
+    }
+    
+    // Make AJAX request
+    fetch(`/routes/${routeId}/toggle-guide`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData,
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button appearance - KEEP the status-button class
+            const isPresent = data.guide_present;
+            button.className = `status-button btn btn-${isPresent ? 'success' : 'warning'}`;
+            button.innerHTML = isPresent ? 
+                '<i class="fas fa-check me-1"></i>Present' : 
+                '<i class="fas fa-times me-1"></i>Not Present';
+            button.setAttribute('data-current-status', isPresent.toString());
+            
+            // Show success message briefly
+            showToast(data.message, 'success');
+        } else {
+            // Show error message
+            showToast(data.message || 'Error updating guide presence', 'error');
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating guide presence', 'error');
+        button.innerHTML = originalText;
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+function cycleRouteStatus(routeId, button) {
+    // Disable button during request
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Updating...';
+    
+    // Make AJAX request
+    fetch(`/routes/${routeId}/cycle-status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button appearance
+            const statusColors = {
+                'not_present': 'danger',
+                'arrived': 'warning', 
+                'ready': 'success'
+            };
+            const statusTexts = {
+                'not_present': 'Not Present',
+                'arrived': 'Arrived',
+                'ready': 'Ready'
+            };
+            
+            const newStatus = data.status;
+            const colorClass = statusColors[newStatus] || 'secondary';
+            const statusText = statusTexts[newStatus] || 'Unknown';
+            
+            button.className = `btn btn-sm btn-${colorClass}`;
+            button.innerHTML = `<i class="fas fa-circle me-1"></i>${statusText}`;
+            button.setAttribute('data-current-status', newStatus);
+            
+            // Business logic: If route is marked as Ready, update Guide Present button
+            if (newStatus === 'ready') {
+                const guideButton = button.closest('tr').querySelector('[onclick*="toggleGuidePresence"]');
+                if (guideButton) {
+                    guideButton.className = 'status-button btn btn-success';
+                    guideButton.innerHTML = '<i class="fas fa-check me-1"></i>Present';
+                    guideButton.setAttribute('data-current-status', 'true');
+                }
+            }
+            
+            // Trigger audio notification for class accounts
+            {% if current_user.account_type == 'class' %}
+            console.log('🔊 DEBUG INDIVIDUAL: Class account detected, checking audio');
+            console.log('🔊 DEBUG INDIVIDUAL: typeof playRouteReadySound =', typeof playRouteReadySound);  
+            console.log('🔊 DEBUG INDIVIDUAL: newStatus =', newStatus);
+            if (newStatus === 'ready' && typeof playRouteReadySound === 'function') {
+                console.log('🔊 Routes: Triggering audio for individual route Ready status:', data.route_number);
+                playRouteReadySound();
+            } else {
+                console.log('🔊 DEBUG INDIVIDUAL: Audio not triggered. Status:', newStatus, 'Function exists:', typeof playRouteReadySound === 'function');
+            }
+            {% endif %}
+            
+            // Show success message briefly
+            showToast(data.message, 'success');
+        } else {
+            // Show error message
+            showToast(data.message || 'Error updating route status', 'error');
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating route status', 'error');
+        button.innerHTML = originalText;
+    })
+    .finally(() => {
+        button.disabled = false;
+    });
+}
+
+function showToast(message, type) {
+    // Create toast element
+    const toastContainer = document.getElementById('toast-container') || createToastContainer();
+    
+    const toastElement = document.createElement('div');
+    toastElement.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+    toastElement.setAttribute('role', 'alert');
+    toastElement.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toastElement);
+    
+    // Initialize and show toast
+    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+    toast.show();
+    
+    // Remove element after hiding
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Button-based select all functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // CRITICAL: Immediately remove any old selectAll elements that might exist
+    const oldSelectAll = document.getElementById('selectAll');
+    if (oldSelectAll) {
+        oldSelectAll.remove();
+    }
+    
+    // Remove any other old selectAll elements with multiple attempts
+    function removeOldElements() {
+        // Only remove checkbox-style select all elements, not button-style ones
+        document.querySelectorAll('input[id="selectAll"], .form-check-input[id="selectAll"], label[for="selectAll"]').forEach(el => {
+            console.log('Removing old select element:', el.tagName, el.id || el.className);
+            el.remove();
+        });
+    }
+    
+    // Run immediately but protect our legitimate button
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    if (selectAllBtn) {
+        selectAllBtn.setAttribute('data-protected', 'true');
+    }
+    
+    removeOldElements();
+    
+    // Run again after short delay in case elements are created dynamically
+    setTimeout(removeOldElements, 10);
+    setTimeout(removeOldElements, 50);
+    setTimeout(removeOldElements, 100);
+    
+    // Make the legitimate Select All button visible after cleanup
+    setTimeout(() => {
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        if (selectAllBtn && selectAllBtn.getAttribute('data-protected') === 'true') {
+            selectAllBtn.style.visibility = 'visible';
+            console.log('Protected Select All button made visible');
+        } else {
+            console.warn('Select All button not found or not protected!');
+        }
+        
+        // Also show bulk action buttons after cleanup
+        const bulkActions = document.querySelector('.bulk-actions-mobile');
+        if (bulkActions) {
+            bulkActions.parentElement.classList.add('bulk-actions-loaded');
+        }
+    }, 150);
+    
+    // Initialize bulk button states
+    updateBulkButtons();
+    
+    // Update reset button text based on current filter
+    const urlParams = new URLSearchParams(window.location.search);
+    const areaId = urlParams.get('area_id');
+    const resetAllText = document.getElementById('resetAllText');
+    
+    if (resetAllText) {
+        resetAllText.textContent = areaId ? 'Reset Area' : 'Reset All';
+    }
+    
+    // Initialize areas and students when modal opens
+    const addRouteModal = document.getElementById('addRouteModal');
+    if (addRouteModal) {
+        addRouteModal.addEventListener('shown.bs.modal', function() {
+            updateAreas();
+        });
+    }
+});
+
+// Safeguarding alerts functionality
+function showRouteSafeguardingAlerts(routeId, routeNumber) {
+    const routeData = {{ routes | tojson }};
+    const studentsData = {{ students | tojson }};
+    
+    const route = routeData[routeId];
+    const safeguardingAlerts = [];
+    
+    if (route && route.student_ids) {
+        route.student_ids.forEach(studentId => {
+            const student = studentsData[studentId];
+            if (student && student.safeguarding_notes && student.safeguarding_notes.length > 0) {
+                safeguardingAlerts.push({
+                    name: student.name,
+                    notes: student.safeguarding_notes
+                });
+            }
+        });
+    }
+    
+    if (safeguardingAlerts.length > 0) {
+        document.getElementById('safeguardingRouteNumber').textContent = routeNumber;
+        
+        const alertsList = document.getElementById('safeguardingAlertsList');
+        alertsList.innerHTML = '';
+        
+        safeguardingAlerts.forEach(alert => {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'card mb-3';
+            alertDiv.innerHTML = `
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-shield-alt text-danger me-2"></i>
+                        ${alert.name}
+                    </h6>
+                    <p class="card-text">${alert.notes}</p>
+                </div>
+            `;
+            alertsList.appendChild(alertDiv);
+        });
+        
+        var modal = new bootstrap.Modal(document.getElementById('routeSafeguardingAlertModal'));
+        modal.show();
+    }
+}
+
+function showSafeguardingAlert(studentName, safeguardingNotes) {
+    document.getElementById('safeguardingStudentName').textContent = studentName;
+    document.getElementById('safeguardingMessage').textContent = safeguardingNotes;
+    new bootstrap.Modal(document.getElementById('safeguardingAlertModal')).show();
+}
+
+function showMedicalInfo(studentName, medicalNotes, hasMedicalNeeds, requiresPediatricFirstAid) {
+    document.getElementById('medicalStudentName').textContent = studentName;
+    
+    // Build medical conditions text
+    let conditionsText = [];
+    if (hasMedicalNeeds === 'True' || hasMedicalNeeds === true) {
+        conditionsText.push('Has medical needs');
+    }
+    if (requiresPediatricFirstAid === 'True' || requiresPediatricFirstAid === true) {
+        conditionsText.push('Requires Pediatric First Aid qualified staff member');
+    }
+    
+    document.getElementById('medicalConditionText').textContent = conditionsText.length > 0 ? conditionsText.join(', ') : 'None specified';
+    
+    // Handle medical notes - if it's about pediatric first aid only, show that info
+    let notesText = medicalNotes || '';
+    if (!notesText && (requiresPediatricFirstAid === 'True' || requiresPediatricFirstAid === true)) {
+        notesText = 'This student requires supervision by staff qualified in Pediatric First Aid during transport.';
+    }
+    
+    document.getElementById('medicationText').textContent = notesText || 'None specified';
+    
+    new bootstrap.Modal(document.getElementById('medicalAlertModal')).show();
+}
+
+// Use the existing working function above - no duplication needed
+
+// Show route pediatric first aid alerts
+function showRoutePediatricFirstAidAlerts(routeId, routeNumber) {
+    const routeData = {{ routes | tojson }};
+    const studentsData = {{ students | tojson }};
+    
+    const route = routeData[routeId];
+    const pediatricFirstAidStudents = [];
+    
+    if (route && route.student_ids) {
+        route.student_ids.forEach(studentId => {
+            const student = studentsData[studentId];
+            if (student && (student.requires_pediatric_first_aid === 'True' || student.requires_pediatric_first_aid === true)) {
+                pediatricFirstAidStudents.push({
+                    name: student.name,
+                    medicalNotes: student.medical_notes || ''
+                });
+            }
+        });
+    }
+    
+    if (pediatricFirstAidStudents.length > 0) {
+        document.getElementById('pediatricFirstAidRouteNumber').textContent = routeNumber;
+        
+        const alertsList = document.getElementById('pediatricFirstAidAlertsList');
+        alertsList.innerHTML = '';
+        
+        pediatricFirstAidStudents.forEach(student => {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'card mb-3 border-primary';
+            alertDiv.innerHTML = `
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-user-md text-primary me-2"></i>
+                        ${student.name}
+                    </h6>
+                    <p class="card-text"><strong>Requires:</strong> Pediatric First Aid qualified staff member during transport</p>
+                    ${student.medicalNotes ? `<p class="card-text"><strong>Additional Notes:</strong> ${student.medicalNotes}</p>` : ''}
+                </div>
+            `;
+            alertsList.appendChild(alertDiv);
+        });
+        
+        var modal = new bootstrap.Modal(document.getElementById('routePediatricFirstAidAlertModal'));
+        modal.show();
+    }
+}
+
+</script>
+
+<style>
+/* Mobile-specific layout adjustments */
+@media (max-width: 768px) {
+    
+    /* Keep bulk actions in same row on mobile but stack area filters */
+    .mobile-stack {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+    
+    /* Force bulk actions to stay in same row on mobile */
+    .mobile-stack > div:last-child {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* Prevent layout shifts during page transitions on mobile */
+    @media (max-width: 768px) {
+        * {
+            -webkit-backface-visibility: hidden !important;
+            backface-visibility: hidden !important;
+        }
+        
+        .mobile-stack,
+        .bulk-actions-mobile,
+        .select-all-mobile,
+        .mobile-dropdown-stable {
+            will-change: auto !important;
+            transform: translateZ(0) !important;
+        }
+    
+    /* Bulk actions on mobile - all 4 buttons in same row */
+        /* Force all buttons to stay in one row */
+        .bulk-actions-mobile {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 0.15rem !important;
+        }
+        
+        .bulk-actions-mobile .btn {
+            min-width: 60px !important;
+            max-width: 70px !important;
+            width: 65px !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            max-height: 50px !important;
+            font-size: 0.65rem !important;
+            padding: 0.2rem !important;
+            white-space: normal !important;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            line-height: 1.1 !important;
+            border-width: 1px !important;
+            box-sizing: border-box !important;
+            overflow: visible !important;
+        }
+        
+        .bulk-actions-mobile .btn i {
+            font-size: 0.9rem !important;
+            margin-right: 0 !important;
+            margin-bottom: 0.2rem !important;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+            width: 0.9rem !important;
+            height: 0.9rem !important;
+            line-height: 1 !important;
+            min-width: 0.9rem !important;
+            max-width: 0.9rem !important;
+            min-height: 0.9rem !important;
+            max-height: 0.9rem !important;
+            transform: none !important;
+            transition: none !important;
+        }
+        
+        /* Ensure button text is visible on mobile */
+        .bulk-actions-mobile .btn span {
+            font-size: 0.6rem !important;
+            line-height: 1.1 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            transform: none !important;
+            transition: none !important;
+            display: block !important;
+            word-wrap: break-word !important;
+            hyphens: auto !important;
+        }
+        
+        /* Make Not Present button wider to fit text */
+        #bulkNotPresentBtn {
+            min-width: 70px !important;
+            max-width: 75px !important;
+            width: 72px !important;
+        }
+        
+        /* Hide reset button text completely on mobile - show only icon */
+        #resetAllText {
+            display: none !important;
+        }
+        
+        /* Make select all button smaller on mobile and no gap */
+        .select-all-mobile {
+            font-size: 0.65rem !important;
+            margin-right: 0 !important;
+            min-width: 50px !important;
+            height: 50px !important;
+            padding: 0.3rem !important;
+            flex-shrink: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+        }
+        
+        .select-all-mobile i {
+            font-size: 0.9rem !important;
+            margin-right: 0 !important;
+            margin-bottom: 0.2rem !important;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+            width: 0.9rem !important;
+            height: 0.9rem !important;
+            line-height: 1 !important;
+            min-width: 0.9rem !important;
+            max-width: 0.9rem !important;
+            min-height: 0.9rem !important;
+            max-height: 0.9rem !important;
+            transform: none !important;
+            transition: none !important;
+        }
+        
+        /* Hide select all text on mobile - show only icon */
+        #selectAllText {
+            display: none !important;
+        }
+        
+        /* Prevent any old selectAll elements from appearing during page load */
+        #selectAll,
+        input[type="checkbox"]#selectAll,
+        .form-check-input#selectAll,
+        input[id="selectAll"],
+        label[for="selectAll"],
+        [id*="selectAll"]:not(#selectAllBtn):not(#selectAllIcon):not(#selectAllText),
+        .form-check:has(#selectAll),
+        .form-check-input:has(#selectAll) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            position: absolute !important;
+            left: -9999px !important;
+            top: -9999px !important;
+            width: 0 !important;
+            height: 0 !important;
+            z-index: -9999 !important;
+            pointer-events: none !important;
+        }
+        
+        /* Ensure these styles apply immediately on page load */
+        html #selectAll,
+        body #selectAll,
+        * #selectAll {
+            display: none !important;
+        }
+    }
+    
+    /* Critical: Apply select all hiding styles globally with ultra-high priority */
+    #selectAll,
+    input[type="checkbox"]#selectAll,
+    .form-check-input#selectAll,
+    input[id="selectAll"],
+    label[for="selectAll"],
+    .form-check:has(input[id="selectAll"]),
+    .form-check:has(#selectAll) {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+        width: 0 !important;
+        height: 0 !important;
+        z-index: -9999 !important;
+        pointer-events: none !important;
+        transform: translateX(-9999px) !important;
+    }
+    
+    /* Add styles that apply immediately on document load */
+    html #selectAll,
+    body #selectAll,
+    form #selectAll,
+    div #selectAll,
+    * #selectAll {
+        display: none !important;
+    }
+        
+        /* Ensure the new Select All button is always visible on mobile */
+        #selectAllBtn {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Prevent layout shift during page transitions */
+        .bulk-actions-mobile,
+        .select-all-mobile {
+            transition: none !important;
+        }
+        
+        /* Stabilize mobile dropdown to prevent stretching */
+        .mobile-dropdown-stable {
+            width: 100% !important;
+            max-width: 200px !important;
+            min-width: 200px !important;
+            flex-shrink: 0 !important;
+        }
+        
+        .mobile-dropdown-stable .form-select {
+            width: 100% !important;
+            max-width: 200px !important;
+            min-width: 200px !important;
+        }
+        
+        /* Stabilize entire mobile container */
+        .mobile-stack {
+            min-height: 50px !important;
+        }
+        
+        /* Prevent bulk actions container from shifting */
+        .bulk-actions-mobile {
+            flex-shrink: 0 !important;
+        }
+        
+        /* Prevent reflow during page loads on mobile */
+        .mobile-stack {
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Hide any checkbox elements during page load to prevent flash */
+        body.loading input[type="checkbox"],
+        body input[type="checkbox"]:not(.route-checkbox) {
+            display: none !important;
+        }
+        
+        /* Override any potential cached styles for old select all */
+        * {
+            transition: none !important;
+        }
+        
+        *[id*="selectAll"]:not(#selectAllBtn):not(#selectAllIcon):not(#selectAllText) {
+            display: none !important;
+        }
+        }
+        
+        /* Force immediate layout stability */
+        .bulk-actions-mobile .btn,
+        .select-all-mobile {
+            visibility: visible !important;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+
+    }
+}
+</style>
+
+
+
+<!-- Route Status Modals -->
+<!-- Not Arrived Routes Modal -->
+<div class="modal fade" id="notArrivedModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Routes Not Ready ({{ not_arrived_routes|default(0) }})</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% set not_ready_routes_list = [] %}
+                {% for route_id, route in routes.items() %}
+                    {% if route.status == 'not_present' %}
+                        {% set _ = not_ready_routes_list.append({
+                            'route_number': route.route_number,
+                            'area_name': route.area_name
+                        }) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if not_ready_routes_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Route</th>
+                                    <th style="width: 50%;">Area</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route in not_ready_routes_list %}
+                                <tr>
+                                    <td style="width: 50%;"><strong>{{ route.route_number }}</strong></td>
+                                    <td style="width: 50%;">{{ route.area_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h5>All routes are ready!</h5>
+                        <p class="text-muted">No routes are currently marked as not ready.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Arrived Routes Modal -->
+<div class="modal fade" id="arrivedModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">Routes Arrived ({{ arrived_routes|default(0) }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% set arrived_routes_list = [] %}
+                {% for route_id, route in routes.items() %}
+                    {% if route.status == 'arrived' %}
+                        {% set _ = arrived_routes_list.append({
+                            'route_number': route.route_number,
+                            'area_name': route.area_name
+                        }) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if arrived_routes_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Route</th>
+                                    <th style="width: 50%;">Area</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route in arrived_routes_list %}
+                                <tr>
+                                    <td style="width: 50%;"><strong>{{ route.route_number }}</strong></td>
+                                    <td style="width: 50%;">{{ route.area_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                        <h5>No routes have arrived yet</h5>
+                        <p class="text-muted">Routes will appear here once they arrive at school.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ready Routes Modal -->
+<div class="modal fade" id="readyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Routes Ready ({{ ready_routes|default(0) }})</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% set ready_routes_list = [] %}
+                {% for route_id, route in routes.items() %}
+                    {% if route.status == 'ready' %}
+                        {% set _ = ready_routes_list.append({
+                            'route_number': route.route_number,
+                            'area_name': route.area_name
+                        }) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if ready_routes_list %}
+                    <div class="table-responsive">
+                        <table class="table table-striped" style="width: 100%; table-layout: fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50%;">Route</th>
+                                    <th style="width: 50%;">Area</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for route in ready_routes_list %}
+                                <tr>
+                                    <td style="width: 50%;"><strong>{{ route.route_number }}</strong></td>
+                                    <td style="width: 50%;">{{ route.area_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-hourglass-start fa-3x text-info mb-3"></i>
+                        <h5>No routes are ready yet</h5>
+                        <p class="text-muted">Routes will appear here once they're ready for loading/unloading.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Individual Safeguarding Alert Modal -->
+<div class="modal fade" id="safeguardingAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Safeguarding Alert
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3">
+                    <strong><i class="fas fa-shield-alt me-2"></i>Important Safety Information</strong>
+                </div>
+                <h6>Student: <span id="safeguardingStudentName" class="fw-bold"></span></h6>
+                <div class="mt-3">
+                    <label class="form-label fw-bold">Safeguarding Notes:</label>
+                    <div class="p-3 bg-light border rounded">
+                        <span id="safeguardingMessage"></span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Please ensure all staff are aware of these safeguarding requirements before student collection.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-2"></i>Understood
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Route Safeguarding Alerts Modal -->
+<div class="modal fade" id="routeSafeguardingAlertModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-shield-alt text-danger me-2"></i>
+                    Safeguarding Alerts - Route <span id="safeguardingRouteNumber"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> These students have safeguarding alerts that require attention.
+                </div>
+                <div id="safeguardingAlertsList">
+                    <!-- Dynamic content will be added here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Medical Information Modal -->
+<div class="modal fade" id="medicalAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-medkit me-2"></i>Medical Information
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <strong><i class="fas fa-stethoscope me-2"></i>Medical Information</strong>
+                </div>
+                <h6>Student: <span id="medicalStudentName" class="fw-bold"></span></h6>
+                <div class="mt-3">
+                    <label class="form-label fw-bold">Medical Requirements:</label>
+                    <div class="p-3 bg-light border rounded">
+                        <span id="medicalConditionText"></span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label fw-bold">Medical Notes:</label>
+                    <div class="p-3 bg-light border rounded">
+                        <span id="medicationText"></span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Please ensure all staff are aware of medical requirements before student collection.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-2"></i>Understood
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Route Safeguarding Alerts Modal -->
+<div class="modal fade" id="routeSafeguardingAlertModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-shield-alt me-2"></i>Safeguarding Alerts for Route <span id="safeguardingRouteNumber"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="safeguardingAlertsList">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Route Pediatric First Aid Alerts Modal -->
+<div class="modal fade" id="routePediatricFirstAidAlertModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-md me-2"></i>Pediatric First Aid Requirements for Route <span id="pediatricFirstAidRouteNumber"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="pediatricFirstAidAlertsList">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Working Audio System from Dashboard -->
+{% if current_user.account_type == 'class' %}
+<script>
+function playRouteReadySound() {
+    console.log('🔊 Attempting to play route ready sound for class account');
+    
+    // Check if we're on mobile/iPad and audio isn't ready yet
+    const isMobile = /Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIPad = /iPad/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const needsInitialization = (isMobile || isIPad) && !window.mobileAudioReady;
+    
+    if (needsInitialization) {
+        console.log('🔊 Mobile/iPad device detected but audio not ready, initializing...');
+        initializeMobileAudio();
+        // Try to play after a short delay to allow initialization
+        setTimeout(() => {
+            playRouteReadySound();
+        }, 150);
+        return;
+    }
+    
+    // Use existing audio context if available
+    let audioContext = window.audioContext;
+    
+    // Try Web Audio API first
+    try {
+        if (!audioContext) {
+            console.log('🔊 Creating new audio context for sound playback');
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            window.audioContext = audioContext;
+        }
+        
+        console.log('🔊 Audio context state before playing:', audioContext.state);
+        
+        // Handle audio context suspended state (required for user interaction)
+        if (audioContext.state === 'suspended') {
+            console.log('🔊 Audio context suspended, attempting to resume');
+            audioContext.resume().then(() => {
+                console.log('🔊 Audio context resumed successfully');
+                playBeep(audioContext);
+            }).catch(e => {
+                console.log('🔊 Failed to resume audio context:', e);
+                tryFallbackAudio();
+            });
+        } else if (audioContext.state === 'running') {
+            console.log('🔊 Audio context ready, playing beep');
+            playBeep(audioContext);
+        } else {
+            console.log('🔊 Audio context in unexpected state:', audioContext.state);
+            tryFallbackAudio();
+        }
+        
+    } catch (error) {
+        console.log('🔊 Web Audio API error:', error);
+        tryFallbackAudio();
+    }
+}
+
+function playBeep(audioContext) {
+    try {
+        // Create a bell-like chime sound using multiple harmonics
+        playChimeSound(audioContext, 0.0);
+        
+        console.log('🔊 Gentle chime notification played successfully');
+    } catch (error) {
+        console.log('🔊 Error in playBeep:', error);
+        tryFallbackAudio();
+    }
+}
+
+function playChimeSound(audioContext, startTime) {
+    // Create a gentle, calming chime using soft harmonies
+    const duration = 1.0;
+    const now = audioContext.currentTime + startTime;
+    
+    // Use gentle, consonant frequencies for a calming effect
+    const chimeNotes = [
+        { freq: 261.63, volume: 0.12, delay: 0.0 },   // C4 (lower, warmer)
+        { freq: 329.63, volume: 0.10, delay: 0.1 },   // E4 (major third)
+        { freq: 392.00, volume: 0.08, delay: 0.15 }   // G4 (perfect fifth)
+    ];
+    
+    chimeNotes.forEach(note => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Use sine wave for soft, pure tone
+        oscillator.type = 'sine';
+        oscillator.frequency.value = note.freq;
+        
+        // Create gentle, calming envelope
+        const noteStart = now + note.delay;
+        gainNode.gain.setValueAtTime(0, noteStart);
+        gainNode.gain.linearRampToValueAtTime(note.volume, noteStart + 0.1); // Gentle attack
+        gainNode.gain.exponentialRampToValueAtTime(0.001, noteStart + duration); // Soft decay
+        
+        oscillator.start(noteStart);
+        oscillator.stop(noteStart + duration);
+    });
+}
+
+function tryFallbackAudio() {
+    console.log('🔊 Attempting HTML5 audio fallback');
+    try {
+        // Create a simple beep using HTML5 audio
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Tzu2geBzKP2sC3eVIGLHnF8T6JQAoUXrTp66hVFApGn+Tzu2geBzKP2sC3eVIGLHnF8T6JQAoUXrTp66hVFApGn+Tzu2geBzKP2sC3eVIGLHnF8T');
+        audio.volume = 0.3;
+        audio.play().then(() => {
+            console.log('🔊 HTML5 fallback audio played');
+        }).catch(e => {
+            console.log('🔊 HTML5 fallback also failed:', e);
+        });
+    } catch (error) {
+        console.log('🔊 HTML5 fallback error:', error);
+    }
+}
+
+function initializeMobileAudio() {
+    if (window.mobileAudioReady) {
+        console.log('🔊 Mobile/iPad audio already initialized');
+        return;
+    }
+    
+    const isIPad = /iPad/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    console.log('🔊 Initializing mobile/iPad audio...', isIPad ? '(iPad detected)' : '(Mobile detected)');
+    
+    try {
+        // Create audio context
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Resume if suspended (mobile/iPad requirement)
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('🔊 Mobile/iPad audio context resumed');
+                
+                // Play silent tone to unlock audio (critical for iPad)
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 440;
+                gainNode.gain.value = 0; // Silent
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.01);
+                
+                window.audioContext = audioContext;
+                window.mobileAudioReady = true;
+                
+                console.log('🔊 Mobile/iPad audio initialization complete');
+            }).catch(error => {
+                console.log('🔊 Mobile/iPad audio resume failed:', error);
+            });
+        } else {
+            window.audioContext = audioContext;
+            window.mobileAudioReady = true;
+            console.log('🔊 Mobile/iPad audio ready (context not suspended)');
+        }
+        
+    } catch (error) {
+        console.log('🔊 Mobile audio initialization error:', error);
+    }
+}
+
+// Mobile/iPad audio initialization on first interaction
+document.addEventListener('click', initializeMobileAudio, { once: true });
+document.addEventListener('touchstart', initializeMobileAudio, { once: true });
+document.addEventListener('touchend', initializeMobileAudio, { once: true }); // Additional for iPad
+document.addEventListener('pointerdown', initializeMobileAudio, { once: true }); // Modern touch events
+
+
+
+
+</script>
+{% endif %}
+
+<!-- Multi-user conflict-free sync -->
+<script>
+// Multi-user sync with conflict prevention for mobile teams
+let syncInterval;
+let recentUserUpdates = new Map(); // Track recent user changes
+
+function startCrossDeviceSync() {
+    // Only sync on transport check-in page
+    if (!window.location.pathname.includes('/routes')) return;
+    
+    syncInterval = setInterval(() => {
+        // Only sync if no buttons are currently being pressed
+        const processingButtons = document.querySelectorAll('[data-processing="true"]');
+        if (processingButtons.length > 0) {
+            console.log('Skipping sync - buttons being processed');
+            return;
+        }
+        
+        // Check for updates
+        fetch('/api/sync/routes')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.routes) {
+                    updateStatusButtonsWithConflictResolution(data.routes);
+                }
+            })
+            .catch(error => {
+                console.log('Sync check failed:', error);
+            });
+    }, 2000); // Check every 2 seconds (balanced for multi-user)
+}
+
+function updateStatusButtonsWithConflictResolution(routeData) {
+    const now = Date.now();
+    
+    Object.keys(routeData).forEach(routeId => {
+        const route = routeData[routeId];
+        const button = document.querySelector(`button[data-route-id="${routeId}"]`);
+        
+        if (button && button.dataset.processing !== 'true' && button.dataset.userControlled !== 'true') {
+            const currentStatus = button.dataset.currentStatus;
+            
+            // Check if this user recently changed this route
+            const recentUpdate = recentUserUpdates.get(routeId);
+            const isRecentUserChange = recentUpdate && (now - recentUpdate) < 5000; // 5 second protection
+            
+            if (currentStatus !== route.status && !isRecentUserChange) {
+                console.log(`Updating ${route.route_number}: ${currentStatus} → ${route.status}`);
+                
+                // Update button
+                button.dataset.currentStatus = route.status;
+                
+                if (route.status === 'ready') {
+                    button.className = 'status-button btn btn-success';
+                    button.innerHTML = '<i class="fas fa-check-circle me-1"></i>Ready';
+                } else if (route.status === 'arrived') {
+                    button.className = 'status-button btn btn-warning';
+                    button.innerHTML = '<i class="fas fa-truck me-1"></i>Arrived';
+                } else {
+                    button.className = 'status-button btn btn-danger';
+                    button.innerHTML = '<i class="fas fa-times-circle me-1"></i>Not Present';
+                }
+            } else if (isRecentUserChange) {
+                console.log(`Protecting ${route.route_number} - recent user change`);
+            }
+        }
+    });
+    
+    // Clean up old user updates (older than 10 seconds)
+    recentUserUpdates.forEach((timestamp, routeId) => {
+        if (now - timestamp > 10000) {
+            recentUserUpdates.delete(routeId);
+        }
+    });
+}
+
+// Track user changes to prevent conflicts
+function trackUserUpdate(routeId) {
+    recentUserUpdates.set(routeId, Date.now());
+    console.log(`Protected route ${routeId} from sync conflicts`);
+    
+    // Also mark the button as user-controlled to prevent immediate sync override
+    const button = document.querySelector(`button[data-route-id="${routeId}"]`);
+    if (button) {
+        button.dataset.userControlled = 'true';
+        // Remove user control flag after 6 seconds
+        setTimeout(() => {
+            if (button) {
+                button.dataset.userControlled = 'false';
+            }
+        }, 6000);
+    }
+}
+
+// Start sync when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(startCrossDeviceSync, 3000); // Wait 3 seconds before starting
+});
+
+// Stop sync when leaving page
+window.addEventListener('beforeunload', () => {
+    if (syncInterval) clearInterval(syncInterval);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,1067 @@
+{% extends "base.html" %}
+
+{% block title %}Students Management - Hamilton Transport Management{% endblock %}
+
+{% block content %}
+<div class="container students-page">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    {% if from_route and target_route %}
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <h1 class="h2 mb-0">
+                            <i class="fas fa-user-graduate me-2"></i>Add Students to {{ target_route.route_number }}
+                        </h1>
+                        <a href="{{ url_for('schools') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Route Admin
+                        </a>
+                    </div>
+                    <p class="text-muted mb-0">Select students to assign to route {{ target_route.route_number }}</p>
+                    {% else %}
+                    <h1 class="h2 mb-0">
+                        <i class="fas fa-user-graduate me-2"></i>Students Management
+                    </h1>
+
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('students_csv_template') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-download me-2"></i>CSV Template
+                    </a>
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
+                        <i class="fas fa-upload me-2"></i>Bulk Upload
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                        <i class="fas fa-plus me-2"></i>Add Student
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Header with Filters -->
+    <div class="sticky-top bg-white shadow-sm" style="z-index: 1000; top: 0; padding: 15px 0; margin-bottom: 20px;">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex gap-3 align-items-center">
+                                    <h5 class="mb-0 me-3 text-primary">
+                                        <i class="fas fa-user-graduate me-2"></i>Students Management
+                                    </h5>
+                                    <div class="d-flex gap-3 align-items-center">
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <label class="form-label mb-0 me-2">Search:</label>
+                                            <input type="text" class="form-control" style="width: 250px;" placeholder="Search by name, parent, or class..." 
+                                                   id="studentSearch" onkeyup="searchStudents()" autocomplete="off">
+                                        </div>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <label class="form-label mb-0 me-2">Filter by Class:</label>
+                                            <select class="form-select" style="width: auto;" onchange="filterByClass(this.value)" id="classFilter">
+                                                <option value="">All Classes</option>
+                                                {% for class_name in available_classes %}
+                                                <option value="{{ class_name }}">Class {{ class_name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="btn btn-success" id="bulkAssignBtn" onclick="showBulkAssignModal()" disabled>
+                                    <i class="fas fa-route me-1"></i>Assign Selected to Route (<span id="selectedCount">0</span>)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    {% if students %}
+                    <div class="table-responsive" id="studentsTable">
+                        <table class="table table-hover table-fixed">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th style="width: 15%;">Name</th>
+                                    <th style="width: 8%;">Class</th>
+                                    <th style="width: 20%;">Parent/Carer Info</th>
+                                    <th style="width: 12%;">Medical Needs</th>
+                                    <th style="width: 8%;">Harness</th>
+                                    <th style="width: 12%;">Alerts</th>
+                                    <th style="width: 15%;">Route Assignment</th>
+                                    <th style="width: 10%;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-table-body">
+                                {% for student_id, student in students.items() %}
+                                {% if student.route_id %}
+                                    {% set assigned_route = all_routes.get(student.route_id) %}
+                                    {% set route_text = (assigned_route.route_number if assigned_route else '').lower() %}
+                                {% else %}
+                                    {% set route_text = '' %}
+                                {% endif %}
+                                <tr class="student-row" 
+                                    data-student-name="{{ student.name.lower() }}" 
+                                    data-student-class="{{ (student.class_name or '').lower() }}"
+                                    data-parent-name="{{ (student.parent1_name or '').lower() }}"
+                                    data-parent2-name="{{ (student.parent2_name or '').lower() }}"
+                                    data-parent-phone="{{ student.parent1_phone or '' }}"
+                                    data-parent2-phone="{{ student.parent2_phone or '' }}"
+                                    data-route="{{ route_text }}"
+                                    data-medical-notes="{{ (student.medical_notes or '').lower() }}">
+                                    <td>
+                                        <input type="checkbox" class="form-check-input student-checkbox" value="{{ student_id }}" onchange="updateBulkAssignButton()">
+                                    </td>
+                                    <td>
+                                        <strong>{{ student.name }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ student.class_name }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="mb-1">
+                                            <i class="fas fa-user me-1"></i><strong>{{ student.parent1_name }}</strong>
+                                        </div>
+                                        <div class="mb-1">
+                                            <i class="fas fa-phone me-1"></i>{{ student.parent1_phone }}
+                                        </div>
+                                        {% if student.parent2_name %}
+                                        <div class="mb-1">
+                                            <i class="fas fa-user me-1"></i><strong>{{ student.parent2_name }}</strong>
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-phone me-1"></i>{{ student.parent2_phone }}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if student.has_medical_needs == 'True' or student.has_medical_needs == True or student.has_medical_needs == 'true' or student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True or student.requires_pediatric_first_aid == 'true' or student.medical_notes %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% if student.has_medical_needs == 'True' or student.has_medical_needs == True or student.has_medical_needs == 'true' or student.medical_notes %}
+                                                    <button class="btn btn-info btn-sm" onclick="showMedicalInfo('{{ student.name }}', '{{ (student.medical_notes or '')|replace("'", "\\'") }}', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" title="Click to view medical information">
+                                                        <i class="fas fa-medical-bag me-1"></i>Yes
+                                                    </button>
+                                                {% endif %}
+                                                {% if student.requires_pediatric_first_aid == 'True' or student.requires_pediatric_first_aid == True or student.requires_pediatric_first_aid == 'true' %}
+                                                    <span class="badge bg-primary text-white" onclick="showMedicalInfo('{{ student.name }}', 'Requires Pediatric First Aid qualified staff member.', '{{ student.has_medical_needs }}', '{{ student.requires_pediatric_first_aid }}')" style="cursor: pointer;" title="Requires Pediatric First Aid - Click for details">P</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if student.harness == 'Yes' %}
+                                            <span class="badge bg-warning fw-bold fs-6" style="width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">H</span>
+                                        {% elif student.harness == 'No' %}
+                                            <span class="text-muted">-</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if student.safeguarding_notes %}
+                                            <span class="badge bg-danger fw-bold fs-6 safeguarding-alert" 
+                                                  style="width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer;"
+                                                  onclick="showSafeguardingAlert('{{ student.name }}', '{{ student.safeguarding_notes|replace("'", "\\'") }}')"
+                                                  title="Click to view safeguarding notes">S</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if student.route_id %}
+                                            {% set assigned_route = all_routes.get(student.route_id) %}
+                                            {% if assigned_route %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-route me-1"></i>{{ assigned_route.route_number }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>Not Assigned
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>Not Assigned
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-secondary" data-student-id="{{ student_id }}" onclick="openEditModal(this)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="showDeleteConfirm('{{ student_id }}', '{{ student.name|replace("'", "\\'") }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-graduate fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No students added yet</h5>
+
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+                            <i class="fas fa-plus me-2"></i>Add First Student
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_student') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Student Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="class_name" class="form-label">Class</label>
+                        <input type="text" class="form-control" id="class_name" name="class_name" placeholder="e.g., 3A, 10B, Form 7" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parent_name" class="form-label">Parent/Carer 1 Name</label>
+                        <input type="text" class="form-control" id="parent_name" name="parent_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parent_phone" class="form-label">Parent/Carer 1 Phone</label>
+                        <input type="tel" class="form-control" id="parent_phone" name="parent_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parent2_name" class="form-label">Parent/Carer 2 Name (Optional)</label>
+                        <input type="text" class="form-control" id="parent2_name" name="parent2_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="parent2_phone" class="form-label">Parent/Carer 2 Phone (Optional)</label>
+                        <input type="tel" class="form-control" id="parent2_phone" name="parent2_phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="harness" class="form-label">Harness Requirement</label>
+                        <select class="form-select" id="harness" name="harness">
+                            <option value="">Not specified</option>
+                            <option value="Yes">Yes - Required</option>
+                            <option value="No">No - Not required</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="safeguarding_notes" class="form-label">Safeguarding Notes</label>
+                        <textarea class="form-control" id="safeguarding_notes" name="safeguarding_notes" rows="3" placeholder="e.g., Not to be collected by father, Special collection arrangements, etc."></textarea>
+                        <small class="form-text text-muted">Add any safeguarding concerns or special collection instructions</small>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="has_medical_needs" name="has_medical_needs" onchange="toggleMedicalFields()">
+                            <label class="form-check-label" for="has_medical_needs">
+                                Student has medical needs
+                            </label>
+                        </div>
+                    </div>
+                    <div id="medical_fields" style="display: none;">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="requires_pediatric_first_aid" name="requires_pediatric_first_aid">
+                                <label class="form-check-label" for="requires_pediatric_first_aid">
+                                    Requires pediatric first aid trained guide
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="medical_notes" class="form-label">Medical Notes</label>
+                            <textarea class="form-control" id="medical_notes" name="medical_notes" rows="3" placeholder="Additional medical information..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div class="modal fade" id="editStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editStudentForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Student Name</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_class_name" class="form-label">Class</label>
+                        <input type="text" class="form-control" id="edit_class_name" name="class_name" placeholder="e.g., 3A, 10B, Form 7" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_parent_name" class="form-label">Parent/Carer 1 Name</label>
+                        <input type="text" class="form-control" id="edit_parent_name" name="parent_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_parent_phone" class="form-label">Parent/Carer 1 Phone</label>
+                        <input type="tel" class="form-control" id="edit_parent_phone" name="parent_phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_parent2_name" class="form-label">Parent/Carer 2 Name (Optional)</label>
+                        <input type="text" class="form-control" id="edit_parent2_name" name="parent2_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_parent2_phone" class="form-label">Parent/Carer 2 Phone (Optional)</label>
+                        <input type="tel" class="form-control" id="edit_parent2_phone" name="parent2_phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_address" class="form-label">Address</label>
+                        <textarea class="form-control" id="edit_address" name="address" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_harness" class="form-label">Harness Requirement</label>
+                        <select class="form-select" id="edit_harness" name="harness">
+                            <option value="">Not specified</option>
+                            <option value="Yes">Yes - Required</option>
+                            <option value="No">No - Not required</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_safeguarding_notes" class="form-label">Safeguarding Notes</label>
+                        <textarea class="form-control" id="edit_safeguarding_notes" name="safeguarding_notes" rows="3" placeholder="e.g., Not to be collected by father, Special collection arrangements, etc."></textarea>
+                        <small class="form-text text-muted">Add any safeguarding concerns or special collection instructions</small>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit_has_medical_needs" name="has_medical_needs" onchange="toggleEditMedicalFields()">
+                            <label class="form-check-label" for="edit_has_medical_needs">
+                                Student has medical needs
+                            </label>
+                        </div>
+                    </div>
+                    <div id="edit_medical_fields" style="display: none;">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit_requires_pediatric_first_aid" name="requires_pediatric_first_aid">
+                                <label class="form-check-label" for="edit_requires_pediatric_first_aid">
+                                    Requires pediatric first aid trained guide
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_medical_notes" class="form-label">Medical Notes</label>
+                            <textarea class="form-control" id="edit_medical_notes" name="medical_notes" rows="3" placeholder="Additional medical information..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-trash-alt text-danger mb-3" style="font-size: 2rem;"></i>
+                <p>Delete <strong id="deleteStudentNameConfirm"></strong>?</p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" id="deleteConfirmForm" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSV Upload Modal -->
+<div class="modal fade" id="csvUploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('students_csv_upload') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Upload Students</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">Select CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                        <small class="form-text text-muted">
+                            Please download the CSV template first to ensure proper formatting.
+                        </small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>CSV Format:</strong> The file should contain columns for Name, Class, Parent/Carer Name, Parent/Carer Phone, Address, optional medical information, and Harness.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload Students</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Assign to Route Modal -->
+<div class="modal fade" id="bulkAssignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('bulk_assign_students') }}" id="bulkAssignForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="from_route" value="{{ from_route or '' }}">
+                <input type="hidden" name="came_from" value="students">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Students to Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Assign <strong id="bulkAssignCount">0</strong> selected students to a route:</p>
+                    <div class="mb-3">
+                        <label for="bulk_route_id" class="form-label">Select Route</label>
+                        <select class="form-select" id="bulk_route_id" name="route_id" required onchange="togglePickupLocationField()">
+                            {% if from_route and target_route %}
+                                <option value="{{ target_route.id }}" selected>{{ target_route.route_number }}</option>
+                            {% else %}
+                                <option value="">Choose a route...</option>
+                                {% for route_id, route in routes.items() %}
+                                    <option value="{{ route_id }}" data-provider="{{ route.provider_name or '' }}">{{ route.route_number }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <!-- Pickup Location for Parent Routes -->
+                    <div class="mb-3" id="pickupLocationField" style="display: none;">
+                        <label for="pickup_location" class="form-label">Parent Pickup Location</label>
+                        <select class="form-select" id="pickup_location" name="pickup_location">
+                            <option value="">Choose pickup location...</option>
+                            {% for area_id, area in areas.items() %}
+                                {% if area.name != 'Multiple areas' %}
+                                <option value="{{ area_id }}">{{ area.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">
+                            Specify where parents should collect their children (e.g., Secondary, Front of school)
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Selected Students:</label>
+                        <div id="selectedStudentsList" class="border rounded p-2 bg-light">
+                            <!-- Selected students will be populated here -->
+                        </div>
+                    </div>
+                    <input type="hidden" id="bulk_student_ids" name="student_ids">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign Students</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle medical fields visibility
+function toggleMedicalFields() {
+    const checkbox = document.getElementById('has_medical_needs');
+    const medicalFields = document.getElementById('medical_fields');
+    
+    if (checkbox.checked) {
+        medicalFields.style.display = 'block';
+    } else {
+        medicalFields.style.display = 'none';
+        // Clear fields when hidden
+        document.getElementById('requires_pediatric_first_aid').checked = false;
+        document.getElementById('medical_notes').value = '';
+    }
+}
+
+function toggleEditMedicalFields() {
+    const checkbox = document.getElementById('edit_has_medical_needs');
+    const medicalFields = document.getElementById('edit_medical_fields');
+    
+    if (checkbox.checked) {
+        medicalFields.style.display = 'block';
+    } else {
+        medicalFields.style.display = 'none';
+        // Clear fields when hidden
+        document.getElementById('edit_requires_pediatric_first_aid').checked = false;
+        document.getElementById('edit_medical_notes').value = '';
+    }
+}
+
+function openEditModal(button) {
+    const studentId = button.getAttribute('data-student-id');
+    
+    // Fetch student data via AJAX to avoid template rendering issues
+    fetch(`/students/${studentId}/data`)
+        .then(response => response.json())
+        .then(student => {
+            document.getElementById('editStudentForm').action = '/students/' + studentId + '/edit';
+            document.getElementById('edit_name').value = student.name || '';
+            document.getElementById('edit_class_name').value = student.class_name || '';
+            document.getElementById('edit_parent_name').value = student.parent1_name || '';
+            document.getElementById('edit_parent_phone').value = student.parent1_phone || '';
+            document.getElementById('edit_parent2_name').value = student.parent2_name || '';
+            document.getElementById('edit_parent2_phone').value = student.parent2_phone || '';
+            document.getElementById('edit_address').value = student.address || 'Not specified';
+            
+            // Check if ANY medical condition exists
+            const hasMedical = student.medical_needs === 'Yes' || student.medical_needs === 'true' || student.medical_needs === true;
+            const hasBadge = student.badge_required === 'Yes' || student.badge_required === 'true' || student.badge_required === true;
+            const hasAnyMedicalCondition = hasMedical || hasBadge || (student.medical_notes && student.medical_notes.trim() !== '');
+            
+            document.getElementById('edit_has_medical_needs').checked = hasAnyMedicalCondition;
+            document.getElementById('edit_requires_pediatric_first_aid').checked = hasBadge;
+            document.getElementById('edit_medical_notes').value = student.medical_notes || '';
+            document.getElementById('edit_harness').value = student.harness || '';
+            document.getElementById('edit_safeguarding_notes').value = student.safeguarding_notes || '';
+            
+            // Show/hide medical fields based on checkbox
+            toggleEditMedicalFields();
+            
+            new bootstrap.Modal(document.getElementById('editStudentModal')).show();
+        })
+        .catch(error => {
+            console.error('Error fetching student data:', error);
+            alert('Error loading student information');
+        });
+}
+
+
+
+
+
+function searchStudents() {
+    const searchTerm = document.getElementById('studentSearch').value.toLowerCase().trim();
+    const classFilter = document.getElementById('classFilter').value;
+    const rows = document.querySelectorAll('.student-row');
+    
+    rows.forEach(row => {
+        const studentName = row.dataset.studentName || '';
+        const studentClass = row.dataset.studentClass || '';
+        const parentName = row.dataset.parentName || '';
+        const parent2Name = row.dataset.parent2Name || '';
+        const parentPhone = row.dataset.parentPhone || '';
+        const parent2Phone = row.dataset.parent2Phone || '';
+        const route = row.dataset.route || '';
+        const medicalNotes = row.dataset.medicalNotes || '';
+        
+        // Check if search term matches any field
+        const matchesSearch = searchTerm === '' || 
+            studentName.includes(searchTerm) ||
+            studentClass.includes(searchTerm) ||
+            parentName.includes(searchTerm) ||
+            parent2Name.includes(searchTerm) ||
+            parentPhone.includes(searchTerm) ||
+            parent2Phone.includes(searchTerm) ||
+            route.includes(searchTerm) ||
+            medicalNotes.includes(searchTerm);
+        
+        // Check class filter (case-insensitive comparison)
+        const matchesClass = classFilter === '' || studentClass === classFilter.toLowerCase();
+        
+        // Show row only if it matches both search and class filter
+        if (matchesSearch && matchesClass) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Reset select all checkbox after filtering
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+    
+    // Update bulk assign button
+    updateBulkAssignButton();
+}
+
+function filterByClass(classNum) {
+    // Update the class filter value and trigger search
+    const searchInput = document.getElementById('studentSearch');
+    searchStudents(); // This will use both search term and class filter
+    
+    // Reset select all checkbox after filtering
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+    
+    // Update bulk assign button
+    updateBulkAssignButton();
+}
+
+function toggleHarness(studentId, currentValue) {
+    let newValue;
+    if (currentValue === 'Yes') {
+        newValue = 'No';
+    } else if (currentValue === 'No') {
+        newValue = '';  // Not specified
+    } else {
+        newValue = 'Yes';
+    }
+    
+    // Send AJAX request to update harness
+    fetch(`/students/${studentId}/toggle-harness`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            harness: newValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the badge on the page
+            const badge = event.target;
+            
+            // Update badge text and styling based on new value
+            if (newValue === 'Yes') {
+                badge.textContent = 'Yes';
+                badge.className = 'badge bg-warning clickable-harness';
+            } else if (newValue === 'No') {
+                badge.textContent = 'No';
+                badge.className = 'badge bg-secondary clickable-harness';
+            } else {
+                badge.textContent = 'Not specified';
+                badge.className = 'badge bg-light text-dark clickable-harness';
+            }
+            
+            badge.onclick = () => toggleHarness(studentId, newValue);
+            
+            // Update colors
+            if (newValue === 'Yes') {
+                badge.className = 'badge bg-danger clickable-harness';
+            } else {
+                badge.className = 'badge bg-secondary clickable-harness';
+            }
+            
+            // Show success message
+            showToast('Harness requirement updated successfully', 'success');
+        } else {
+            showToast('Failed to update harness requirement', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating harness requirement', 'error');
+    });
+}
+
+function showToast(message, type) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    // Add to page
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    toastContainer.appendChild(toast);
+    
+    // Show toast
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove from DOM after hiding
+    toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+    });
+}
+
+// Bulk selection functionality
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    // Only select checkboxes in visible rows (not hidden by class filter)
+    const visibleRows = document.querySelectorAll('.student-row[style=""], .student-row:not([style*="display: none"])');
+    
+    visibleRows.forEach(row => {
+        const checkbox = row.querySelector('.student-checkbox:not(:disabled)');
+        if (checkbox) {
+            checkbox.checked = selectAllCheckbox.checked;
+        }
+    });
+    
+    updateBulkAssignButton();
+}
+
+function updateBulkAssignButton() {
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    const bulkAssignBtn = document.getElementById('bulkAssignBtn');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (checkedBoxes.length > 0) {
+        bulkAssignBtn.disabled = false;
+        selectedCount.textContent = checkedBoxes.length;
+    } else {
+        bulkAssignBtn.disabled = true;
+        selectedCount.textContent = '0';
+    }
+    
+    // Update select all checkbox state based on visible rows only
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const visibleRows = document.querySelectorAll('.student-row[style=""], .student-row:not([style*="display: none"])');
+    const visibleCheckboxes = Array.from(visibleRows).map(row => 
+        row.querySelector('.student-checkbox:not(:disabled)')
+    ).filter(cb => cb !== null);
+    const visibleCheckedBoxes = visibleCheckboxes.filter(cb => cb.checked);
+    
+    if (visibleCheckedBoxes.length === visibleCheckboxes.length && visibleCheckboxes.length > 0) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else if (visibleCheckedBoxes.length > 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+}
+
+function showBulkAssignModal() {
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    const studentIds = Array.from(checkedBoxes).map(cb => cb.value);
+    const studentNames = Array.from(checkedBoxes).map(cb => {
+        const row = cb.closest('tr');
+        return row.querySelector('td:nth-child(2) strong').textContent;
+    });
+    
+    // Update modal content
+    document.getElementById('bulkAssignCount').textContent = studentIds.length;
+    document.getElementById('bulk_student_ids').value = studentIds.join(',');
+    
+    // Show selected students list
+    const selectedStudentsList = document.getElementById('selectedStudentsList');
+    selectedStudentsList.innerHTML = studentNames.map(name => 
+        `<div class="d-flex align-items-center mb-1">
+            <i class="fas fa-user-graduate me-2"></i>
+            <span>${name}</span>
+        </div>`
+    ).join('');
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('bulkAssignModal')).show();
+}
+
+// Mark user action timestamp when CSV upload form is submitted
+document.getElementById('csvUploadModal').addEventListener('submit', function(e) {
+    // Mark user action to prevent immediate refresh
+    localStorage.setItem('lastUserAction', Date.now().toString());
+});
+
+function showSafeguardingAlert(studentName, safeguardingNotes) {
+    document.getElementById('safeguardingStudentName').textContent = studentName;
+    document.getElementById('safeguardingMessage').textContent = safeguardingNotes;
+    new bootstrap.Modal(document.getElementById('safeguardingAlertModal')).show();
+}
+
+// Toggle pickup location field based on route selection
+function togglePickupLocationField() {
+    const routeSelect = document.getElementById('bulk_route_id');
+    const pickupLocationField = document.getElementById('pickupLocationField');
+    const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+    
+    // Show pickup location field only for Parent provider routes
+    const providerName = selectedOption.getAttribute('data-provider') || '';
+    const isParentRoute = providerName.toLowerCase() === 'parent' || 
+                         (selectedOption.text && selectedOption.text.toLowerCase().includes('parent'));
+    
+    if (isParentRoute) {
+        pickupLocationField.style.display = 'block';
+        document.getElementById('pickup_location').required = true;
+    } else {
+        pickupLocationField.style.display = 'none';
+        document.getElementById('pickup_location').required = false;
+        document.getElementById('pickup_location').value = '';
+    }
+}
+
+// Prevent layout shift by marking table as loaded
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('studentsTable');
+    if (table) {
+        // Small delay to ensure all CSS is applied
+        setTimeout(() => {
+            table.classList.add('loaded');
+        }, 50);
+    }
+});
+
+// Show medical information popup
+function showMedicalInfo(studentName, medicalNotes, hasMedicalNeeds, requiresPediatricFirstAid) {
+    const modal = document.getElementById('medicalInfoModal');
+    if (!modal) {
+        // Create medical info modal if it doesn't exist
+        const modalHtml = `
+        <div class="modal fade" id="medicalInfoModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-medkit me-2"></i>Medical Information
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info mb-3">
+                            <strong><i class="fas fa-stethoscope me-2"></i>Medical Information</strong>
+                        </div>
+                        <h6>Student: <span id="medicalStudentName" class="fw-bold"></span></h6>
+                        <div class="mt-3">
+                            <label class="form-label fw-bold">Medical Requirements:</label>
+                            <div class="p-3 bg-light border rounded">
+                                <span id="medicalConditionText"></span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label fw-bold">Medical Notes:</label>
+                            <div class="p-3 bg-light border rounded">
+                                <span id="medicationText"></span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Please ensure all staff are aware of medical requirements before student collection.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-check me-2"></i>Understood
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    // Build medical conditions text
+    let conditionsText = [];
+    if (hasMedicalNeeds === 'True' || hasMedicalNeeds === true) {
+        conditionsText.push('Has medical needs');
+    }
+    if (requiresPediatricFirstAid === 'True' || requiresPediatricFirstAid === true) {
+        conditionsText.push('Requires Pediatric First Aid qualified staff member');
+    }
+    
+    document.getElementById('medicalStudentName').textContent = studentName;
+    document.getElementById('medicalConditionText').textContent = conditionsText.length > 0 ? conditionsText.join(', ') : 'None specified';
+    
+    // Handle medical notes - if it's about pediatric first aid only, show that info
+    let notesText = medicalNotes || '';
+    if (!notesText && (requiresPediatricFirstAid === 'True' || requiresPediatricFirstAid === true)) {
+        notesText = 'This student requires supervision by staff qualified in Pediatric First Aid during transport.';
+    }
+    
+    document.getElementById('medicationText').textContent = notesText || 'None specified';
+    
+    new bootstrap.Modal(document.getElementById('medicalInfoModal')).show();
+}
+
+// Show safeguarding alert popup
+function showSafeguardingAlert(studentName, safeguardingNotes) {
+    const modal = document.getElementById('safeguardingAlertModal');
+    if (modal) {
+        document.getElementById('safeguardingStudentName').textContent = studentName;
+        document.getElementById('safeguardingMessage').textContent = safeguardingNotes;
+        new bootstrap.Modal(modal).show();
+    }
+}
+
+function showDeleteConfirm(studentId, studentName) {
+    console.log('showDeleteConfirm called with:', studentId, studentName);
+    const nameElement = document.getElementById('deleteStudentNameConfirm');
+    const formElement = document.getElementById('deleteConfirmForm');
+    const modalElement = document.getElementById('deleteConfirmModal');
+    
+    console.log('Elements found:', {nameElement, formElement, modalElement});
+    
+    if (nameElement && formElement && modalElement) {
+        nameElement.textContent = studentName;
+        formElement.action = '/students/' + studentId + '/delete';
+        new bootstrap.Modal(modalElement).show();
+    } else {
+        console.error('Modal elements not found, falling back to alert');
+        if (confirm('Delete ' + studentName + '?')) {
+            // Direct form submission as fallback
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/students/' + studentId + '/delete';
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}
+</script>
+
+<!-- Safeguarding Alert Modal -->
+<div class="modal fade" id="safeguardingAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Safeguarding Alert
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3">
+                    <strong><i class="fas fa-shield-alt me-2"></i>Important Safety Information</strong>
+                </div>
+                <h6>Student: <span id="safeguardingStudentName" class="fw-bold"></span></h6>
+                <div class="mt-3">
+                    <label class="form-label fw-bold">Safeguarding Notes:</label>
+                    <div class="p-3 bg-light border rounded">
+                        <span id="safeguardingMessage"></span>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Please ensure all staff are aware of these safeguarding requirements before student collection.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-2"></i>Understood
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom spacing -->
+<div style="height: 60px;"></div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.table-fixed {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.table-fixed th,
+.table-fixed td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    position: relative;
+}
+
+/* Prevent text wrapping in specific columns that might cause shifting */
+.table-fixed .badge {
+    white-space: nowrap;
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+}
+
+.table-responsive {
+    /* Ensure consistent width calculation */
+    overflow-x: auto;
+    min-height: 200px;
+}
+
+/* Force immediate layout to prevent shift */
+.table-responsive table {
+    margin-bottom: 0 !important;
+}
+
+/* Prevent font loading from causing shifts */
+.table-fixed {
+    font-display: swap;
+}
+
+/* Ensure consistent spacing */
+.table-fixed .btn-group {
+    white-space: nowrap;
+}
+
+/* Prevent icon loading shifts */
+.fas {
+    width: 1em;
+    text-align: center;
+}
+</style>
+{% endblock %}
