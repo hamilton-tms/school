@@ -3664,3 +3664,14 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('403.html'), 500
+from werkzeug.security import generate_password_hash
+from app import db
+from models import User
+
+@app.route("/create-test-user")
+def create_test_user():
+    hashed_pw = generate_password_hash("123456", method='sha256')
+    user = User(username="Gfokti", password=hashed_pw)
+    db.session.add(user)
+    db.session.commit()
+    return "User Gfokti created with password 123456"
