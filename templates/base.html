@@ -56,13 +56,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <!-- Check if user is a class account to show appropriate navigation -->
-                    {% set is_class_account = false %}
-                    {% if current_user.is_authenticated %}
-                        <!-- Simple username-based check for class accounts -->
-                        {% if current_user.username == 'classes' %}
-                            {% set is_class_account = true %}
-                        {% endif %}
-                    {% endif %}
+                    <!-- Use the is_class_account variable that's already injected by the context processor -->
                     
                     {% if is_class_account %}
                         <!-- Class account navigation - Dashboard only -->
@@ -150,18 +144,57 @@
     {% if current_user.is_authenticated and not request.endpoint == 'routes' %}
     <script src="{{ url_for('static', filename='js/realtime.js') }}"></script>
     {% endif %}
-    <!-- Audio notification system for class accounts -->
-    {% if current_user.is_authenticated and not is_admin %}
+    <!-- Audio notification system for class accounts only -->
     <script>
-        // Pass account type directly to JavaScript for reliable detection
-        window.isClassAccount = true;
-        window.accountType = 'class';
+        // Always set these variables for debugging
+        window.isClassAccount = {{ 'true' if is_class_account else 'false' }};
+        window.accountType = '{{ "class" if is_class_account else "admin" }}';
+        window.currentUsername = '{{ current_user.username if current_user.username else "unknown" }}';
+        console.log('🔊 BASE: Account setup - isClassAccount:', window.isClassAccount, 'accountType:', window.accountType, 'username:', window.currentUsername);
+        
+        // Add comprehensive debugging for mobile class accounts
+        if (window.isClassAccount) {
+            console.log('🔊 BASE: CLASS ACCOUNT DETECTED - Full Debug Info:');
+            console.log('  - User Agent:', navigator.userAgent);
+            console.log('  - Is Mobile:', /Mobi|Android/i.test(navigator.userAgent));
+            console.log('  - Audio Context Support:', !!(window.AudioContext || window.webkitAudioContext));
+            console.log('  - Current URL:', window.location.href);
+            console.log('  - Document ready state:', document.readyState);
+            
+            // Test audio permissions immediately for mobile
+            if (/Mobi|Android/i.test(navigator.userAgent)) {
+                console.log('🔊 BASE: Mobile device detected - will need user interaction for audio');
+            }
+        }
     </script>
-    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    {% if current_user.is_authenticated and is_class_account %}
     <script>
-        // Mark this page as a class account for audio system detection (fallback)
+        // Mark this page as a class account for audio system detection
         document.body.setAttribute('data-account-type', 'class');
         document.body.classList.add('class-account');
+        console.log('🔊 BASE: Audio.js loading for class account...');
+        
+        // Force audio system activation on mobile
+        window.addEventListener('load', function() {
+            console.log('🔊 BASE: Page fully loaded, audio system should be ready');
+            setTimeout(function() {
+                if (window.audioSystem) {
+                    console.log('🔊 BASE: Audio system status:', {
+                        isClassAccount: window.audioSystem.isClassAccount,
+                        isSupported: window.audioSystem.isSupported,
+                        isInitialized: window.audioSystem.isInitialized,
+                        audioContextState: window.audioSystem.audioContext?.state
+                    });
+                } else {
+                    console.log('🔊 BASE: WARNING - Audio system not found after page load');
+                }
+            }, 1000);
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    {% else %}
+    <script>
+        console.log('🔊 BASE: Audio.js NOT loaded - not a class account (isClassAccount:', window.isClassAccount, ')');
     </script>
     {% endif %}
 </body>

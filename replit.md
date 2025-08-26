@@ -29,6 +29,33 @@ Cross-device sync implementation: Implemented multi-user conflict resolution sys
 - **UI/UX Decisions**: UK-specific terminology; uniformly sized, square status buttons (105px × 42px); enhanced mobile responsiveness with two-line text wrapping for route/parent names and optimized column widths; password visibility toggles; sticky headers for critical controls (e.g., student management header); context-aware navigation for back buttons; and alphabetical sorting for routes and student assignments. Safeguarding, medical, and harness requirement alerts are integrated with high-visibility color coding (red for safeguarding, orange for harness 'Yes', blue for medical). Rebranding includes "Routes" to "Transport Check-in" and "Manage Schools" to "Route Admin". Fixed table layout with column shifting prevention using CSS table-layout: fixed and opacity transitions.
 
 ### Recent Technical Fixes (August 2025)
+- **Route Contact Information Display Fixed**: Completed provider and parent contact information display (August 26, 2025)
+  - Fixed provider contact information for regular routes by correcting field names from contact_phone/contact_email to phone/email
+  - Implemented parent route contact information display using student data matching by name
+  - Added proper handling for data inconsistencies where students assigned to different routes than their parent routes
+  - Template prioritizes primary parent contact (parent_name/parent_phone) over secondary contacts
+  - Handles cases where primary contact is missing by promoting secondary contact to primary display
+  - Route detail pages now show clickable phone numbers and email addresses with proper icons
+  - Issue identified: Some student records have missing primary parent data (e.g., Amir Holland showing Helen Davis as secondary contact instead of primary)
+- **Status Tiles Removal**: Completely removed status tiles from dashboard for all users (August 26, 2025)
+  - Removed HTML tiles section and related JavaScript update functions
+  - Disabled dashboard stats polling that was causing network errors
+  - Class accounts now have clean dashboard interface without status tiles
+- **Navigation Security Fix**: Fixed class account access controls (August 26, 2025)
+  - Class accounts now only see Dashboard menu item, no admin pages
+  - Added proper is_class_account context processor injection
+  - Removed unauthorized access to Students, Route Admin, Providers, Staff pages
+- **Audio Notifications System Fixed**: Completed full audio system for class accounts (August 26, 2025)
+  - Fixed critical issue where cross-device sync wasn't triggering audio notifications on mobile class accounts
+  - Added audio notification triggers to both direct route clicks (main.js) and cross-device sync updates (realtime.js) 
+  - Audio system uses pleasant C4-E4-G4 major chord chimes on both mobile and desktop
+  - Class accounts receive audio notifications when routes become "ready" status from any device
+  - Admin accounts remain silent (by design to avoid annoyance during check-ins)
+  - System includes comprehensive fallback mechanisms and detailed logging for troubleshooting
+  - Mobile class accounts now properly play sound when admin changes route status to "ready" on other devices
+- **Bulk Ready Button Styling**: Fixed CSS class concatenation in bulk status updates
+  - Corrected JavaScript from 'btn-btn-success' to 'btn-success' for proper green styling
+  - Bulk operations now display correct button colors after status changes
 - **Student Deletion**: Successfully resolved persistent deletion issues through multiple fixes:
   - Added CSRF exemption (@csrf.exempt) to bypass validation blocking
   - Implemented proper admin permission checking logic matching existing patterns

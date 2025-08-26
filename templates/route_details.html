@@ -54,12 +54,75 @@
                         </div>
                         <div class="col-md-6">
                             {% if provider.name != 'Parent' %}
-                                <p><strong>Provider Contact:</strong> {{ provider.contact_name }}</p>
-                                <p><strong>Phone:</strong> {{ provider.contact_phone }}</p>
-                                <p><strong>Email:</strong> {{ provider.contact_email }}</p>
+                                <p><strong>Provider Contact:</strong> {{ provider.contact_name or 'Not provided' }}</p>
+                                {% if provider.phone %}
+                                    <p><strong>Phone:</strong> 
+                                        <a href="tel:{{ provider.phone }}" class="text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>{{ provider.phone }}
+                                        </a>
+                                    </p>
+                                {% else %}
+                                    <p><strong>Phone:</strong> <span class="text-muted">Not provided</span></p>
+                                {% endif %}
+                                {% if provider.email %}
+                                    <p><strong>Email:</strong> 
+                                        <a href="mailto:{{ provider.email }}" class="text-decoration-none">
+                                            <i class="fas fa-envelope me-1"></i>{{ provider.email }}
+                                        </a>
+                                    </p>
+                                {% else %}
+                                    <p><strong>Email:</strong> <span class="text-muted">Not provided</span></p>
+                                {% endif %}
                             {% else %}
                                 <p><strong>Collection Type:</strong> Parent Collection</p>
-                                <p><em>Individual parent contact information shown below for each child</em></p>
+                                {% if students %}
+                                    {% set student_id, student = students[0] %}
+                                    {% if student.parent1_name or student.parent2_name %}
+                                        <div class="mt-3">
+                                            <h6>Parent Contact Information:</h6>
+                                            {% if student.parent1_name %}
+                                                <p><strong>Primary Contact:</strong> {{ student.parent1_name }}</p>
+                                                {% if student.parent1_phone %}
+                                                    <p><strong>Phone:</strong> 
+                                                        <a href="tel:{{ student.parent1_phone }}" class="text-decoration-none">
+                                                            <i class="fas fa-phone me-1"></i>{{ student.parent1_phone }}
+                                                        </a>
+                                                    </p>
+                                                {% endif %}
+                                            {% elif student.parent2_name %}
+                                                {# If no primary parent, show secondary as primary #}
+                                                <p><strong>Primary Contact:</strong> {{ student.parent2_name }}</p>
+                                                {% if student.parent2_phone %}
+                                                    <p><strong>Phone:</strong> 
+                                                        <a href="tel:{{ student.parent2_phone }}" class="text-decoration-none">
+                                                            <i class="fas fa-phone me-1"></i>{{ student.parent2_phone }}
+                                                        </a>
+                                                    </p>
+                                                {% endif %}
+                                            {% endif %}
+                                            
+                                            {# Show secondary contact only if primary contact exists #}
+                                            {% if student.parent1_name and student.parent2_name %}
+                                                <p><strong>Secondary Contact:</strong> {{ student.parent2_name }}</p>
+                                                {% if student.parent2_phone %}
+                                                    <p><strong>Phone:</strong> 
+                                                        <a href="tel:{{ student.parent2_phone }}" class="text-decoration-none">
+                                                            <i class="fas fa-phone me-1"></i>{{ student.parent2_phone }}
+                                                        </a>
+                                                    </p>
+                                                {% endif %}
+                                            {% endif %}
+                                            
+                                            {% if not student.parent1_phone and not student.parent2_phone %}
+                                                <p class="text-muted">No parent phone numbers provided</p>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <p class="text-muted">No parent contact information available</p>
+                                    {% endif %}
+                                {% else %}
+                                    <p class="text-muted">No student assigned to this parent route</p>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>

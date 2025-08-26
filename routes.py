@@ -1791,6 +1791,27 @@ def update_route_status(route_id):
 def cycle_route_status(route_id):
     """Cycle the status of a route: Not Present -> Arrived -> Ready -> Not Present"""
     print(f"DEBUG: cycle_route_status called with route_id: {route_id}")
+    
+    # Add rate limiting to prevent rapid cycling (reduced to 0.5 seconds for better responsiveness)
+    import time
+    last_update_key = f"route_update_{route_id}"
+    current_time = time.time()
+    
+    # Check if we have stored a last update time for this route
+    if hasattr(cycle_route_status, 'last_updates'):
+        last_update_time = cycle_route_status.last_updates.get(last_update_key, 0)
+        if current_time - last_update_time < 0.5:  # Reduced to 0.5 seconds for better responsiveness
+            print(f"DEBUG: Rate limiting - route {route_id} updated too recently, ignoring")
+            return jsonify({
+                'success': False,
+                'message': 'Please wait before changing status again'
+            }), 429
+    else:
+        cycle_route_status.last_updates = {}
+    
+    # Update the last update time
+    cycle_route_status.last_updates[last_update_key] = current_time
+    
     route = data_store.get_route(route_id)
     if not route:
         if request.headers.get('Content-Type') == 'application/json':
@@ -1981,6 +2002,7 @@ def routes():
             # For regular routes, count students where route_id matches
             route_students = [s for s in students.values() if s.get('route_id') == route_id]
         route['students_count'] = len(route_students)
+        route['students'] = route_students  # Add full student objects for modal display
         
         # Debug logging for count mismatch issues
         if len(route_students) > 0:
@@ -2024,6 +2046,7 @@ def routes():
             arrived_routes += 1
         elif route['status'] == data_store.BUS_STATUS_NOT_PRESENT:
             not_ready_routes += 1
+    
     
     return render_template('routes.html', 
                          routes=all_routes, 
@@ -2089,6 +2112,20 @@ def route_details(route_id):
     
     # Get students assigned to this route
     students = []
+    
+    # For parent routes, find the matching student by name regardless of route assignment
+    if "'s Parent" in route.get('route_number', ''):
+        route_student_name = route.get('route_number', '').replace("'s Parent", "")
+        all_students = data_store.get_all_students()
+        for student_id, student in all_students.items():
+            if student.get('route_id') == route_id:
+                # Student properly assigned to this parent route
+                students.append((student_id, student))
+            elif student.get('name') == route_student_name:
+                # Student name matches but assigned elsewhere - use for contact info anyway
+                students.append((student_id, student))
+    
+    # Also check the standard way (for non-parent routes)
     for student_id in route.get('student_ids', []):
         student = data_store.get_student(student_id)
         if student:
@@ -3659,6 +3696,12 @@ def sync_data(page):
         'timestamp': current_time,
         'data': {}
     })
+
+@app.route('/audio-test')
+@login_required
+def audio_test():
+    """Audio system test page for class accounts"""
+    return render_template('audio_test.html')
 
 @app.errorhandler(404)
 def page_not_found(e):

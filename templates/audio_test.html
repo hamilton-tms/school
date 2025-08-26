@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Audio Test - Hamilton TMS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Audio System Test</h4>
+                    <p class="mb-0 text-muted">Test page for class account audio notifications</p>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Account Information:</h6>
+                        <ul>
+                            <li><strong>Username:</strong> {{ current_user.username }}</li>
+                            <li><strong>Is Class Account:</strong> {{ 'Yes' if is_class_account else 'No' }}</li>
+                            <li><strong>User Agent:</strong> <span id="userAgent"></span></li>
+                            <li><strong>Audio Support:</strong> <span id="audioSupport"></span></li>
+                        </ul>
+                    </div>
+                    
+                    {% if is_class_account %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        You are logged in as a class account. Audio notifications should work.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button id="testAudioBtn" class="btn btn-primary">
+                            <i class="fas fa-play me-2"></i>Test Audio
+                        </button>
+                        <button id="debugAudioBtn" class="btn btn-info ms-2">
+                            <i class="fas fa-bug me-2"></i>Show Debug Info
+                        </button>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Instructions:</h6>
+                        <ol>
+                            <li>Make sure your device volume is up</li>
+                            <li>Tap "Test Audio" button to initialize audio system</li>
+                            <li>You should hear a pleasant 3-note chord (C-E-G)</li>
+                            <li>Check the console logs for detailed debugging info</li>
+                        </ol>
+                    </div>
+                    
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        You are not logged in as a class account. Audio notifications are disabled for admin accounts.
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <h6>Console Logs:</h6>
+                        <div id="logOutput" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                            <div>Audio test page loaded. Check browser console for detailed logs.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Display basic device info
+document.getElementById('userAgent').textContent = navigator.userAgent;
+document.getElementById('audioSupport').textContent = !!(window.AudioContext || window.webkitAudioContext) ? 'Yes' : 'No';
+
+// Log capture for display
+const logOutput = document.getElementById('logOutput');
+const originalLog = console.log;
+console.log = function(...args) {
+    originalLog.apply(console, args);
+    const logDiv = document.createElement('div');
+    logDiv.textContent = args.join(' ');
+    logOutput.appendChild(logDiv);
+    logOutput.scrollTop = logOutput.scrollHeight;
+};
+
+// Test audio button
+{% if is_class_account %}
+document.getElementById('testAudioBtn').addEventListener('click', function() {
+    console.log('🔊 TEST: Test audio button clicked');
+    
+    if (window.audioSystem) {
+        console.log('🔊 TEST: Audio system found, testing...');
+        const result = window.audioSystem.testAudio();
+        if (result) {
+            console.log('🔊 TEST: Audio test successful!');
+        } else {
+            console.log('🔊 TEST: Audio test failed - checking requirements...');
+            console.log('🔊 TEST: Requirements check:');
+            console.log('  - isClassAccount:', window.audioSystem.isClassAccount);
+            console.log('  - isSupported:', window.audioSystem.isSupported); 
+            console.log('  - isInitialized:', window.audioSystem.isInitialized);
+            console.log('  - audioContext state:', window.audioSystem.audioContext?.state);
+        }
+    } else {
+        console.log('🔊 TEST: ERROR - Audio system not found');
+        console.log('🔊 TEST: window.audioSystem:', window.audioSystem);
+        console.log('🔊 TEST: isClassAccount variable:', window.isClassAccount);
+    }
+});
+
+document.getElementById('debugAudioBtn').addEventListener('click', function() {
+    if (typeof window.audioDebug === 'function') {
+        window.audioDebug();
+    } else {
+        console.log('🔊 DEBUG: Audio debug function not available');
+    }
+});
+{% endif %}
+
+console.log('🔊 TEST PAGE: Audio test page ready');
+console.log('🔊 TEST PAGE: Is class account:', {{ 'true' if is_class_account else 'false' }});
+console.log('🔊 TEST PAGE: Audio system available:', !!window.audioSystem);
+</script>
+{% endblock %}

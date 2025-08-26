@@ -3,6 +3,8 @@
 {% block title %}{% if is_class_account %}Hamilton TMS{% else %}Dashboard - Hamilton TMS{% endif %}{% endblock %}
 
 {% block content %}
+<!-- TILES REMOVAL TIMESTAMP: 2025-08-26-10-42 -->
+<!-- CLASS ACCOUNT CHECK: {{ is_class_account|string }} -->
 
 {% if is_class_account %}
 <!-- Audio element for route ready notifications (class accounts only) -->
@@ -116,52 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    {% if not is_class_account %}
-    <!-- Route Statistics - Only for Admin Accounts -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
-            <div class="card bg-danger text-white h-100 dashboard-route-card" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#notArrivedModal">
-                <div class="card-body d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h5 class="card-title">Routes Not Ready</h5>
-                        <h2 class="mb-0">{{ not_arrived_routes|default(0) }}</h2>
-                    </div>
-                    <div class="ms-3">
-                        <i class="fas fa-times fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 mb-3">
-            <div class="card bg-warning text-white h-100 dashboard-route-card" style="cursor: pointer; color: #000;" data-bs-toggle="modal" data-bs-target="#arrivedModal">
-                <div class="card-body d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h5 class="card-title">Routes Arrived</h5>
-                        <h2 class="mb-0">{{ arrived_routes|default(0) }}</h2>
-                    </div>
-                    <div class="ms-3">
-                        <i class="fas fa-truck fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 mb-3">
-            <div class="card bg-success text-white h-100 dashboard-route-card" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#readyModal">
-                <div class="card-body d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h5 class="card-title">Routes Ready</h5>
-                        <h2 class="mb-0">{{ ready_routes|default(0) }}</h2>
-                    </div>
-                    <div class="ms-3">
-                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+    <!-- STATUS TILES COMPLETELY REMOVED FOR ALL USERS -->
 
     <!-- Class Check-in Section -->
     <div class="row mb-4">
@@ -485,15 +442,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // 1. Not first load
         // 2. Not a class change (switching between classes)
         // 3. Routes actually became ready since last check
+        // 4. Prevent spam by adding a small delay check
         if (!isFirstLoad && !isClassChange) {
             const newlyReadyRoutes = [...currentReadyRoutes].filter(route => 
                 !previousReadyRoutes.has(route)
             );
             
             if (newlyReadyRoutes.length > 0) {
+                // Play audio immediately when routes become ready
                 console.log('🔊 Route(s) newly ready, playing notification sound for:', newlyReadyRoutes);
-                // Initialize audio context if needed before playing sound
-                initializeAudioContextForNotifications();
                 playRouteReadySound();
             }
         } else if (isFirstLoad) {
@@ -605,71 +562,25 @@ document.addEventListener('DOMContentLoaded', function() {
     let dashboardStatsInterval = null;
     
     function startDashboardStatsPolling() {
-        // Initial update
-        updateDashboardStats();
-        
-        // Poll every 3 seconds for dashboard stats
-        dashboardStatsInterval = setInterval(() => {
-            updateDashboardStats();
-        }, 3000);
+        // Dashboard stats polling completely disabled since status tiles are removed
+        console.log('Dashboard stats polling disabled - not needed without status tiles');
     }
     
     function updateDashboardStats() {
-        // Get selected class from dropdown (try both IDs)
-        const classSelector = document.getElementById('classSelector') || document.getElementById('classFilter');
-        const selectedClass = classSelector ? classSelector.value : '';
-        
-        console.log('Dashboard stats update - selected class:', selectedClass);
-        
-        // Build URL with class parameter
-        let url = '/api/dashboard-stats';
-        if (selectedClass) {
-            url += '?class=' + encodeURIComponent(selectedClass);
-        }
-        
-        fetch(url, {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Update route status tiles
-            updateStatsTile('Routes Not Ready', data.not_ready_buses || 0);
-            updateStatsTile('Routes Arrived', data.arrived_buses || 0);  
-            updateStatsTile('Routes Ready', data.ready_buses || 0);
-            
-
-        })
-        .catch(error => {
-            console.log('Dashboard stats update error:', error);
-        });
+        // Dashboard stats completely removed - not needed since status tiles are gone
+        console.log('Dashboard stats disabled - using class check-in refresh instead');
     }
     
-    function updateStatsTile(title, count) {
-        // Find the card with the matching title and update its count
-        const cards = document.querySelectorAll('.dashboard-route-card');
-        cards.forEach(card => {
-            const titleElement = card.querySelector('.card-title');
-            if (titleElement && titleElement.textContent.trim() === title) {
-                const countElement = card.querySelector('h2');
-                if (countElement) {
-                    countElement.textContent = count;
-                }
-            }
-        });
-    }
+    // updateStatsTile function removed - status tiles no longer exist
     
     // Start dashboard stats polling when page loads
     {% if not is_class_account %}
     startDashboardStatsPolling();
+    {% endif %}
+    
+    // For class accounts, ensure class check-in auto-refresh is working
+    {% if is_class_account %}
+    console.log('Class account detected - real-time sync will work via class check-in refresh');
     {% endif %}
     
     {% if is_class_account and selected_class %}
@@ -780,8 +691,8 @@ function updateModalContent(status, routes) {
 }
 
 function playRouteReadySound() {
-    {% if is_class_account %}
-    console.log('🔊 Attempting to play route ready sound for class account');
+    // Audio notifications enabled for all users when routes become ready
+    console.log('🔊 Attempting to play route ready sound');
     
     // Check if we're on mobile and audio isn't ready yet
     const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -830,10 +741,6 @@ function playRouteReadySound() {
         console.log('🔊 Web Audio API error:', error);
         tryFallbackAudio();
     }
-    {% else %}
-    // No sound for admin accounts
-    console.log('🔇 Sound notification disabled for admin accounts');
-    {% endif %}
 }
 
 function playBeep(audioContext) {

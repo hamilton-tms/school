@@ -106,6 +106,23 @@ table #selectAll,
             <h1 class="h2 mb-3">
                 <i class="fas fa-route me-2"></i>Transport Check-in
             </h1>
+            
+            <!-- Audio System Status Panel (for class accounts only) -->
+            {% if is_class_account %}
+            <div id="audioStatusPanel" class="alert alert-info mb-3" style="font-size: 14px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-volume-up me-2"></i>
+                        <strong>Audio System Status:</strong>
+                        <span id="audioStatus">Checking...</span>
+                    </div>
+                    <button id="audioInitBtn" class="btn btn-sm btn-outline-primary" onclick="initializeAudioDebug()">
+                        <i class="fas fa-play me-1"></i>Initialize
+                    </button>
+                </div>
+                <div id="audioDetails" class="mt-2 small text-muted"></div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -164,6 +181,11 @@ table #selectAll,
                                         
                                         <!-- Bulk Action Buttons -->
                                         <div class="d-flex gap-2 flex-wrap bulk-actions-mobile">
+                                            {% if is_class_account %}
+                                            <button type="button" class="btn btn-info" onclick="testAudioSystem()" style="height: 38px;" title="Test audio notifications">
+                                                <i class="fas fa-volume-up"></i> <span class="bulk-action-text">Audio</span>
+                                            </button>
+                                            {% endif %}
                                             <button type="button" class="btn btn-warning" onclick="bulkUpdateStatus('arrived')" disabled id="bulkArrivedBtn" style="height: 38px;">
                                                 <i class="fas fa-truck"></i> <span class="bulk-action-text">Arrived</span>
                                             </button>
@@ -526,41 +548,88 @@ table #selectAll,
                     <h6>{{ route.provider_name }}</h6>
                     <p class="text-muted mb-0">Parking Area: <strong>{{ route.area_name }}</strong></p>
                 </div>
-                {% if route.provider_id in providers %}
-                    <div class="row">
-                        <div class="col-12">
-                            <p><strong>Contact Person:</strong> {{ providers[route.provider_id].contact_name }}</p>
-                            <p><strong>Phone:</strong> 
-                                <a href="tel:{{ providers[route.provider_id].phone }}" class="text-decoration-none">
-                                    {{ providers[route.provider_id].phone }}
-                                </a>
-                            </p>
-                            {% if providers[route.provider_id].email %}
-                                <p><strong>Email:</strong> 
-                                    <a href="mailto:{{ providers[route.provider_id].email }}" class="text-decoration-none">
-                                        {{ providers[route.provider_id].email }}
-                                    </a>
+                
+                {% if "'s Parent" in route.route_number %}
+                    <!-- Parent route - show parent contact information from student data -->
+                    {% if route.students and route.students|length > 0 %}
+                        {% set student = route.students[0] %}
+                        <div class="row">
+                            <div class="col-12">
+                                <p><strong>Parent/Carer:</strong> 
+                                    {% if student.parent_name %}
+                                        {{ student.parent_name }}
+                                    {% elif student.parent2_name %}
+                                        {{ student.parent2_name }}
+                                    {% else %}
+                                        Not provided
+                                    {% endif %}
                                 </p>
-                            {% endif %}
+                                {% if student.parent_phone %}
+                                    <p><strong>Phone:</strong> 
+                                        <a href="tel:{{ student.parent_phone }}" class="text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>{{ student.parent_phone }}
+                                        </a>
+                                    </p>
+                                {% elif student.parent2_phone %}
+                                    <p><strong>Phone:</strong> 
+                                        <a href="tel:{{ student.parent2_phone }}" class="text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>{{ student.parent2_phone }}
+                                        </a>
+                                    </p>
+                                {% else %}
+                                    <p class="text-muted">Parent phone number not provided.</p>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                {% elif route.provider_contact or route.provider_phone %}
-                    <div class="row">
-                        <div class="col-12">
-                            {% if route.provider_contact %}
-                                <p><strong>Contact Person:</strong> {{ route.provider_contact }}</p>
-                            {% endif %}
-                            {% if route.provider_phone %}
-                                <p><strong>Phone:</strong> 
-                                    <a href="tel:{{ route.provider_phone }}" class="text-decoration-none">
-                                        {{ route.provider_phone }}
-                                    </a>
-                                </p>
-                            {% endif %}
-                        </div>
-                    </div>
+                    {% else %}
+                        <p class="text-muted">No student assigned to this parent route.</p>
+                    {% endif %}
                 {% else %}
-                    <p class="text-muted">Provider contact information not available.</p>
+                    <!-- Regular route - show provider contact information -->
+                    {% if route.provider_id and route.provider_id in providers %}
+                        {% set provider = providers[route.provider_id] %}
+                        <div class="row">
+                            <div class="col-12">
+                                {% if provider.contact_name %}
+                                    <p><strong>Contact Person:</strong> {{ provider.contact_name }}</p>
+                                {% endif %}
+                                {% if provider.phone %}
+                                    <p><strong>Phone:</strong> 
+                                        <a href="tel:{{ provider.phone }}" class="text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>{{ provider.phone }}
+                                        </a>
+                                    </p>
+                                {% endif %}
+                                {% if provider.email %}
+                                    <p><strong>Email:</strong> 
+                                        <a href="mailto:{{ provider.email }}" class="text-decoration-none">
+                                            <i class="fas fa-envelope me-1"></i>{{ provider.email }}
+                                        </a>
+                                    </p>
+                                {% endif %}
+                                {% if not provider.contact_name and not provider.phone and not provider.email %}
+                                    <p class="text-muted">No contact information available for this provider.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% elif route.provider_contact or route.provider_phone %}
+                        <div class="row">
+                            <div class="col-12">
+                                {% if route.provider_contact %}
+                                    <p><strong>Contact Person:</strong> {{ route.provider_contact }}</p>
+                                {% endif %}
+                                {% if route.provider_phone %}
+                                    <p><strong>Phone:</strong> 
+                                        <a href="tel:{{ route.provider_phone }}" class="text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>{{ route.provider_phone }}
+                                        </a>
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Provider contact information not available.</p>
+                    {% endif %}
                 {% endif %}
             </div>
             <div class="modal-footer">
@@ -842,21 +911,31 @@ function bulkUpdateStatus(status) {
                 }
             });
             
-            // Trigger audio notification for class accounts  
-            console.log('🔊 DEBUG: Bulk operation completed, checking account type...');
-            {% if current_user.account_type == 'class' %}
-            console.log('🔊 DEBUG: Class account confirmed - audio checks starting');
-            console.log('🔊 DEBUG: typeof playRouteReadySound =', typeof playRouteReadySound);
-            console.log('🔊 DEBUG: data.status =', data.status);
-            if (data.status === 'ready' && typeof playRouteReadySound === 'function') {
-                console.log('🔊 Routes: Triggering audio for bulk Ready operation');
-                playRouteReadySound();
-            } else {
-                console.log('🔊 DEBUG: Audio not triggered. Status:', data.status, 'Function exists:', typeof playRouteReadySound === 'function');
+            // Trigger audio notification immediately for class accounts  
+            if (data.status === 'ready') {
+                console.log('🔊 BULK: Routes ready, checking audio - audioSystem=' + (typeof window.audioSystem !== 'undefined') + ', isClass=' + window.isClassAccount);
+                if (typeof window.audioSystem !== 'undefined') {
+                    console.log('🔊 BULK: Audio system exists, playing chord');
+                    if (window.audioSystem.canPlayAudio()) {
+                        console.log('🔊 BULK: Playing chord for bulk operation');
+                        window.audioSystem.playChord();
+                    } else {
+                        console.log('🔊 BULK: Using fallback for bulk operation');
+                        window.audioSystem.onBulkOperation();
+                    }
+                } else if (window.isClassAccount) {
+                    console.log('🔊 BULK: Class account fallback audio for bulk operation');
+                    try {
+                        const audio = new Audio('data:audio/wav;base64,UklGRjUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAAA=');
+                        audio.volume = 0.5;
+                        audio.play().catch(e => console.log('🔊 BULK: Simple audio failed:', e));
+                    } catch (e) {
+                        console.log('🔊 BULK: Audio fallback failed:', e);
+                    }
+                } else {
+                    console.log('🔊 BULK: No audio - not a class account');
+                }
             }
-            {% else %}
-            console.log('🔊 DEBUG: Admin account - no audio needed');
-            {% endif %}
             
             // Show success toast
             showToast(`Successfully updated ${routeIds.length} routes to ${data.status_text}`, 'success');
@@ -1129,18 +1208,31 @@ function cycleRouteStatus(routeId, button) {
                 }
             }
             
-            // Trigger audio notification for class accounts
-            {% if current_user.account_type == 'class' %}
-            console.log('🔊 DEBUG INDIVIDUAL: Class account detected, checking audio');
-            console.log('🔊 DEBUG INDIVIDUAL: typeof playRouteReadySound =', typeof playRouteReadySound);  
-            console.log('🔊 DEBUG INDIVIDUAL: newStatus =', newStatus);
-            if (newStatus === 'ready' && typeof playRouteReadySound === 'function') {
-                console.log('🔊 Routes: Triggering audio for individual route Ready status:', data.route_number);
-                playRouteReadySound();
-            } else {
-                console.log('🔊 DEBUG INDIVIDUAL: Audio not triggered. Status:', newStatus, 'Function exists:', typeof playRouteReadySound === 'function');
+            // Trigger audio notification immediately for class accounts
+            if (newStatus === 'ready') {
+                console.log('🔊 Routes: Route became ready, checking audio system');
+                if (typeof window.audioSystem !== 'undefined') {
+                    console.log('🔊 Routes: Audio system exists, playing chord');
+                    if (window.audioSystem.canPlayAudio()) {
+                        window.audioSystem.playChord();
+                    } else {
+                        window.audioSystem.onRouteStatusChange();
+                    }
+                } else {
+                    console.log('🔊 Routes: No audio system - account type:', window.isClassAccount ? 'CLASS' : 'ADMIN');
+                    // Try simple audio fallback for mobile
+                    if (window.isClassAccount) {
+                        console.log('🔊 Routes: Trying simple audio fallback for class account');
+                        try {
+                            const audio = new Audio('data:audio/wav;base64,UklGRjUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAAA=');
+                            audio.volume = 0.5;
+                            audio.play().catch(e => console.log('🔊 Routes: Simple audio failed:', e));
+                        } catch (e) {
+                            console.log('🔊 Routes: Audio fallback failed:', e);
+                        }
+                    }
+                }
             }
-            {% endif %}
             
             // Show success message briefly
             showToast(data.message, 'success');
@@ -1984,9 +2076,10 @@ function showRoutePediatricFirstAidAlerts(routeId, routeNumber) {
     </div>
 </div>
 
-<!-- Working Audio System from Dashboard -->
-{% if current_user.account_type == 'class' %}
+<!-- Audio system now handled by audio.js - this section is disabled -->
+{% if false %}
 <script>
+// Legacy function - audio now handled by audio.js system
 function playRouteReadySound() {
     console.log('🔊 Attempting to play route ready sound for class account');
     
@@ -1998,10 +2091,8 @@ function playRouteReadySound() {
     if (needsInitialization) {
         console.log('🔊 Mobile/iPad device detected but audio not ready, initializing...');
         initializeMobileAudio();
-        // Try to play after a short delay to allow initialization
-        setTimeout(() => {
-            playRouteReadySound();
-        }, 150);
+        // Play immediately after initialization
+        playRouteReadySound();
         return;
     }
     
@@ -2174,6 +2265,8 @@ function startCrossDeviceSync() {
     // Only sync on transport check-in page
     if (!window.location.pathname.includes('/routes')) return;
     
+    console.log('🔄 SYNC: Starting cross-device sync for', window.isClassAccount ? 'CLASS' : 'ADMIN', 'account');
+    
     syncInterval = setInterval(() => {
         // Only sync if no buttons are currently being pressed
         const processingButtons = document.querySelectorAll('[data-processing="true"]');
@@ -2186,12 +2279,13 @@ function startCrossDeviceSync() {
         fetch('/api/sync/routes')
             .then(response => response.json())
             .then(data => {
+                console.log('🔄 SYNC: Received data:', data);
                 if (data.success && data.routes) {
                     updateStatusButtonsWithConflictResolution(data.routes);
                 }
             })
             .catch(error => {
-                console.log('Sync check failed:', error);
+                console.log('🔄 SYNC: Fetch failed:', error);
             });
     }, 2000); // Check every 2 seconds (balanced for multi-user)
 }
@@ -2211,7 +2305,30 @@ function updateStatusButtonsWithConflictResolution(routeData) {
             const isRecentUserChange = recentUpdate && (now - recentUpdate) < 5000; // 5 second protection
             
             if (currentStatus !== route.status && !isRecentUserChange) {
-                console.log(`Updating ${route.route_number}: ${currentStatus} → ${route.status}`);
+                console.log(`🔄 SYNC: Updating ${route.route_number}: ${currentStatus} → ${route.status}`);
+                
+                // Trigger audio for class accounts when route becomes ready via sync
+                if (route.status === 'ready') {
+                    console.log('🔊 SYNC: Route became ready via sync - checking audio');
+                    if (typeof window.audioSystem !== 'undefined') {
+                        console.log('🔊 SYNC: Audio system exists, playing chord');
+                        if (window.audioSystem.canPlayAudio()) {
+                            console.log('🔊 SYNC: Playing chord via sync update');
+                            window.audioSystem.playChord();
+                        } else {
+                            console.log('🔊 SYNC: Audio not available via sync');
+                        }
+                    } else if (window.isClassAccount) {
+                        console.log('🔊 SYNC: No audio system but class account - trying fallback');
+                        try {
+                            const audio = new Audio('data:audio/wav;base64,UklGRjUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAAA=');
+                            audio.volume = 0.5;
+                            audio.play().catch(e => console.log('🔊 SYNC: Simple audio failed:', e));
+                        } catch (e) {
+                            console.log('🔊 SYNC: Audio fallback failed:', e);
+                        }
+                    }
+                }
                 
                 // Update button
                 button.dataset.currentStatus = route.status;
@@ -2260,12 +2377,156 @@ function trackUserUpdate(routeId) {
 
 // Start sync when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(startCrossDeviceSync, 3000); // Wait 3 seconds before starting
+    startCrossDeviceSync(); // Start immediately
 });
 
 // Stop sync when leaving page
 window.addEventListener('beforeunload', () => {
     if (syncInterval) clearInterval(syncInterval);
+});
+
+// Test audio function for class accounts
+function testAudioSystem() {
+    console.log('🔊 TEST: Manual audio test triggered');
+    
+    if (!window.isClassAccount) {
+        alert('Audio test only available for class accounts');
+        return;
+    }
+    
+    if (typeof window.audioSystem !== 'undefined') {
+        console.log('🔊 TEST: Using audioSystem.testAudio()');
+        const result = window.audioSystem.testAudio();
+        if (!result) {
+            console.log('🔊 TEST: AudioSystem failed, trying fallbacks');
+            tryTestFallbacks();
+        }
+    } else {
+        console.log('🔊 TEST: AudioSystem not available, trying fallbacks');
+        tryTestFallbacks();
+    }
+}
+
+function tryTestFallbacks() {
+    console.log('🔊 TEST: Trying fallback methods');
+    
+    // Try vibration
+    if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 400]);
+        console.log('🔊 TEST: Vibration triggered');
+    }
+    
+    // Try simple audio
+    try {
+        const audio = new Audio('data:audio/wav;base64,UklGRjUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAAA=');
+        audio.volume = 0.5;
+        audio.play().then(() => {
+            console.log('🔊 TEST: Simple audio successful');
+        }).catch(e => {
+            console.log('🔊 TEST: Simple audio failed:', e);
+        });
+    } catch (e) {
+        console.log('🔊 TEST: Audio creation failed:', e);
+    }
+}
+
+// Audio debug panel functions
+function initializeAudioDebug() {
+    updateAudioStatus();
+    
+    // Try to initialize audio system
+    if (window.audioSystem && typeof window.audioSystem.testAudio === 'function') {
+        console.log('🔊 DEBUG: Testing existing audio system');
+        const result = window.audioSystem.testAudio();
+        updateAudioStatus();
+        if (result) {
+            alert('Audio test successful! You should have heard a pleasant chime.');
+        } else {
+            alert('Audio test failed. Check the status panel for details.');
+        }
+    } else {
+        // Try to manually trigger audio initialization
+        console.log('🔊 DEBUG: Audio system not found, triggering user interaction');
+        try {
+            // Create a test audio context to trigger permission request
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                const ctx = new AudioContext();
+                if (ctx.state === 'suspended') {
+                    ctx.resume().then(() => {
+                        console.log('🔊 DEBUG: Audio context resumed');
+                        updateAudioStatus();
+                        ctx.close();
+                    });
+                } else {
+                    ctx.close();
+                    updateAudioStatus();
+                }
+            }
+        } catch (e) {
+            console.log('🔊 DEBUG: Audio context test failed:', e);
+            updateAudioStatus();
+        }
+    }
+}
+
+function updateAudioStatus() {
+    const statusEl = document.getElementById('audioStatus');
+    const detailsEl = document.getElementById('audioDetails');
+    const panelEl = document.getElementById('audioStatusPanel');
+    
+    if (!statusEl) return;
+    
+    let status = 'Unknown';
+    let details = [];
+    let panelClass = 'alert-info';
+    
+    // Check if we're a class account
+    const isClassAccount = window.isClassAccount || false;
+    details.push(`Account Type: ${window.accountType || 'unknown'} (isClass: ${isClassAccount})`);
+    
+    // Check audio system
+    if (window.audioSystem) {
+        const audio = window.audioSystem;
+        if (audio.isInitialized) {
+            status = 'Ready ✓';
+            panelClass = 'alert-success';
+            details.push('Audio system is initialized and ready');
+        } else if (audio.isSupported) {
+            status = 'Supported but not initialized';
+            panelClass = 'alert-warning';
+            details.push('Audio supported but needs user interaction');
+        } else {
+            status = 'Not supported';
+            panelClass = 'alert-danger';
+            details.push('Audio not supported on this device');
+        }
+        
+        if (audio.audioContext) {
+            details.push(`Audio Context State: ${audio.audioContext.state}`);
+        }
+    } else {
+        status = 'Not loaded';
+        panelClass = 'alert-warning';
+        details.push('Audio system not found - may not be a class account');
+    }
+    
+    // Check browser support
+    const hasAudioContext = !!(window.AudioContext || window.webkitAudioContext);
+    details.push(`Browser Audio Support: ${hasAudioContext ? 'Yes' : 'No'}`);
+    
+    // Check mobile
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    details.push(`Mobile Device: ${isMobile ? 'Yes' : 'No'}`);
+    
+    statusEl.textContent = status;
+    detailsEl.innerHTML = details.map(d => `• ${d}`).join('<br>');
+    panelEl.className = `alert ${panelClass} mb-3`;
+}
+
+// Update status when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(updateAudioStatus, 1000); // Give audio system time to load
 });
 </script>
 

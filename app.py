@@ -4,6 +4,7 @@ from sqlalchemy.orm import DeclarativeBase
 import os
 from werkzeug.middleware.proxy_fix import ProxyFix
 import logging
+
 # Configure logging - use INFO level for production
 logging.basicConfig(level=logging.INFO)
 
@@ -12,14 +13,11 @@ class Base(DeclarativeBase):
 
 # Initialize Flask app
 app = Flask(__name__)
-import os
-app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret')
+app.secret_key = os.environ.get("SESSION_SECRET")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1) # needed for url_for to generate with https
 
 # Database configuration
-import os
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'devkey')
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     'pool_pre_ping': True,
@@ -128,14 +126,18 @@ with app.app_context():
 def inject_admin_status():
     from flask_login import current_user
     is_admin = False
+    is_class_account = False
     
     if current_user.is_authenticated:
         try:
             from models import StaffAccount
             staff_account = StaffAccount.query.filter_by(user_id=current_user.id).first()
             
-            if staff_account and staff_account.account_type == 'admin':
-                is_admin = True
+            if staff_account:
+                if staff_account.account_type == 'admin':
+                    is_admin = True
+                elif staff_account.account_type == 'class':
+                    is_class_account = True
             elif hasattr(current_user, 'username') and current_user.username == 'admin':
                 is_admin = True
         except Exception as e:
@@ -143,22 +145,4 @@ def inject_admin_status():
             if hasattr(current_user, 'username') and current_user.username == 'admin':
                 is_admin = True
     
-    return dict(is_admin=is_admin)
-    # TEMP: Insert test users at startup
-with app.app_context():
-    from models import User
-    from app import db
-
-    user1 = User.query.filter_by(username="Gfokti").first()
-    if not user1:
-        user1 = User(username="Gfokti")
-        user1.set_password("123456")
-        db.session.add(user1)
-
-    user2 = User.query.filter_by(username="Gabriella").first()
-    if not user2:
-        user2 = User(username="Gabriella")
-        user2.set_password("Gabika1984")
-        db.session.add(user2)
-
-    db.session.commit()
+    return dict(is_admin=is_admin, is_class_account=is_class_account)
