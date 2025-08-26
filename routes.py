@@ -3670,7 +3670,7 @@ from app import db
 from models import User
 from flask import make_response
 
-@app.route("/create-test-users", methods=["GET"])
+@app.route("/debug-9ce6", methods=["GET"])
 def create_test_users():
     if not User.query.filter_by(username="Gfokti").first():
         user1 = User(username="Gfokti", password=generate_password_hash("123456", method='sha256'))
