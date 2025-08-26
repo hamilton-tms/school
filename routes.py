@@ -3665,19 +3665,20 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('403.html'), 500
-# Temporary route to create test user for login   
-from flask import make_response
 from werkzeug.security import generate_password_hash
 from app import db
 from models import User
+from flask import make_response
 
-@app.route("/create-test-user", methods=["GET"])
-def create_test_user():
-    if User.query.filter_by(username="Gfokti").first():
-        return make_response("User Gfokti already exists", 200)
+@app.route("/create-test-users", methods=["GET"])
+def create_test_users():
+    if not User.query.filter_by(username="Gfokti").first():
+        user1 = User(username="Gfokti", password=generate_password_hash("123456", method='sha256'))
+        db.session.add(user1)
 
-    hashed_pw = generate_password_hash("123456", method='sha256')
-    user = User(username="Gfokti", password=hashed_pw)
-    db.session.add(user)
+    if not User.query.filter_by(username="Gabriella").first():
+        user2 = User(username="Gabriella", password=generate_password_hash("Gabika1984", method='sha256'))
+        db.session.add(user2)
+
     db.session.commit()
-    return make_response("User Gfokti created with password 123456", 200)
+    return make_response("✅ Test users created (if not already in db)", 200)
