@@ -3676,3 +3676,19 @@ def create_test_user():
     db.session.add(user)
     db.session.commit()
     return "User Gfokti created with password 123456"
+# Temporary route to create test user for login   
+from flask import make_response
+from werkzeug.security import generate_password_hash
+from app import db
+from models import User
+
+@app.route("/create-test-user", methods=["GET"])
+def create_test_user():
+    if User.query.filter_by(username="Gfokti").first():
+        return make_response("User Gfokti already exists", 200)
+
+    hashed_pw = generate_password_hash("123456", method='sha256')
+    user = User(username="Gfokti", password=hashed_pw)
+    db.session.add(user)
+    db.session.commit()
+    return make_response("User Gfokti created with password 123456", 200)
