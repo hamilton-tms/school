@@ -1,4 +1,3 @@
-# Added test user route to fix login
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, make_response, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from urllib.parse import urlparse
@@ -2368,9 +2367,13 @@ def staff():
             # This is a database staff member not in the data store - add them
             print(f"DEBUG: Found database staff {staff_account.staff_id} not in data store - adding to display")
             # Check if there's a separate display name stored in Staff table
-            from models import Staff
-            staff_record = Staff.query.get(staff_account.staff_id)
-            display_name = staff_record.display_name if staff_record else staff_account.user.username
+            try:
+                from models import Staff
+                staff_record = Staff.query.get(staff_account.staff_id)
+                display_name = staff_record.display_name if staff_record and staff_record.display_name else staff_account.user.username
+            except Exception as e:
+                print(f"DEBUG: Error accessing Staff table for {staff_account.staff_id}: {e}")
+                display_name = staff_account.user.username
             
             enriched_staff[staff_account.staff_id] = {
                 'name': display_name,  # Use stored display name from Staff table or username as fallback
@@ -2430,8 +2433,7 @@ def add_staff():
             if existing_user:
                 print(f"DEBUG: Existing user details: ID={existing_user.id}, username={existing_user.username}")
                 flash(f'Username "{username}" already exists! Please choose a different username.', 'error')
-                class_names = data_store.get_unique_class_names()
-                return render_template('staff.html', staff=data_store.get_all_staff(), class_names=class_names, show_add_form=True)
+                return redirect(url_for('staff'))
             
             # Get selected classes if account type is 'class'
             selected_classes = []
@@ -2500,8 +2502,8 @@ def add_staff():
         else:
             flash('All required fields must be filled!', 'error')
     
-    class_names = data_store.get_unique_class_names()
-    return render_template('staff.html', staff=data_store.get_all_staff(), class_names=class_names, show_add_form=True)
+    # For GET requests or form errors, redirect to main staff page
+    return redirect(url_for('staff'))
 
 # Removed problematic debug routes that were causing conflicts
 
@@ -3665,20 +3667,3 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('403.html'), 500
-# TEMP: Insert test users at startup
-with app.app_context():
-    from models import User
-    from werkzeug.security import generate_password_hash
-    from app import db
-
-    user1 = User.query.filter_by(username="Gfokti").first()
-    if not user1:
-        user1 = User(username="Gfokti", password=generate_password_hash("123456", method='pbkdf2:sha256'))
-        db.session.add(user1)
-
-    user2 = User.query.filter_by(username="Gabriella").first()
-    if not user2:
-        user2 = User(username="Gabriella", password=generate_password_hash("Gabika1984", method='pbkdf2:sha256'))
-        db.session.add(user2)
-
-    db.session.commit()
