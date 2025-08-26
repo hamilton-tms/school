@@ -3665,21 +3665,20 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('403.html'), 500
-from werkzeug.security import generate_password_hash
-from app import db
-from models import User
-from werkzeug.security import generate_password_hash
-from app import db
-
-# Create test users only if they don't exist
+# TEMP: Insert test users at startup
 with app.app_context():
-    if not User.query.filter_by(username="Gfokti").first():
+    from models import User
+    from werkzeug.security import generate_password_hash
+    from app import db
+
+    user1 = User.query.filter_by(username="Gfokti").first()
+    if not user1:
         user1 = User(username="Gfokti", password=generate_password_hash("123456", method='sha256'))
         db.session.add(user1)
 
-    if not User.query.filter_by(username="Gabriella").first():
+    user2 = User.query.filter_by(username="Gabriella").first()
+    if not user2:
         user2 = User(username="Gabriella", password=generate_password_hash("Gabika1984", method='sha256'))
         db.session.add(user2)
 
     db.session.commit()
-    print("✅ Test users added to the database.")

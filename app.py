@@ -4,7 +4,6 @@ from sqlalchemy.orm import DeclarativeBase
 import os
 from werkzeug.middleware.proxy_fix import ProxyFix
 import logging
-
 # Configure logging - use INFO level for production
 logging.basicConfig(level=logging.INFO)
 
