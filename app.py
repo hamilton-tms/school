@@ -144,3 +144,21 @@ def inject_admin_status():
                 is_admin = True
     
     return dict(is_admin=is_admin)
+    # TEMP: Insert test users at startup
+with app.app_context():
+    from models import User
+    from app import db
+
+    user1 = User.query.filter_by(username="Gfokti").first()
+    if not user1:
+        user1 = User(username="Gfokti")
+        user1.set_password("123456")
+        db.session.add(user1)
+
+    user2 = User.query.filter_by(username="Gabriella").first()
+    if not user2:
+        user2 = User(username="Gabriella")
+        user2.set_password("Gabika1984")
+        db.session.add(user2)
+
+    db.session.commit()
