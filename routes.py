@@ -3673,12 +3673,12 @@ with app.app_context():
 
     user1 = User.query.filter_by(username="Gfokti").first()
     if not user1:
-        user1 = User(username="Gfokti", password=generate_password_hash("123456", method='sha256'))
+        user1 = User(username="Gfokti", password=generate_password_hash("123456", method='pbkdf2:sha256'))
         db.session.add(user1)
 
     user2 = User.query.filter_by(username="Gabriella").first()
     if not user2:
-        user2 = User(username="Gabriella", password=generate_password_hash("Gabika1984", method='sha256'))
+        user2 = User(username="Gabriella", password=generate_password_hash("Gabika1984", method='pbkdf2:sha256'))
         db.session.add(user2)
 
     db.session.commit()
