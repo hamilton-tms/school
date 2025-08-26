@@ -826,8 +826,8 @@ function bulkUpdateStatus(status) {
                 const statusButton = document.querySelector(`button[data-route-id="${routeId}"]`);
                 if (statusButton) {
                     console.log('Found status button for route:', routeId);
-                    // Update button classes and content
-                    statusButton.className = `status-button btn btn-${data.status_color}`;
+                    // Update button classes and content  
+                    statusButton.className = `status-button btn ${data.status_color}`;
                     statusButton.setAttribute('data-current-status', data.status);
                     
                     if (data.status === 'ready') {
