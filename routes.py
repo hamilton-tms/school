@@ -3668,13 +3668,11 @@ def internal_server_error(e):
 from werkzeug.security import generate_password_hash
 from app import db
 from models import User
-from flask import make_response
 from werkzeug.security import generate_password_hash
 from app import db
-from models import User
 
-@app.route("/__setup-user-access__7f8a2", methods=["GET"])
-def setup_users_secret_route():
+# Create test users only if they don't exist
+with app.app_context():
     if not User.query.filter_by(username="Gfokti").first():
         user1 = User(username="Gfokti", password=generate_password_hash("123456", method='sha256'))
         db.session.add(user1)
@@ -3684,4 +3682,4 @@ def setup_users_secret_route():
         db.session.add(user2)
 
     db.session.commit()
-    return make_response("✅ Test users created (if not already in db)", 200)
+    print("✅ Test users added to the database.")
